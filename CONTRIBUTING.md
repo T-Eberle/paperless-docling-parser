@@ -30,11 +30,36 @@ This project adheres to a code of conduct that all contributors are expected to 
 
 ## Getting Started
 
-Before you begin:
+### Branch Protection
+
+**Important:** The `main` and `dev` branches are protected. Direct pushing to these branches is disabled.
+
+### Contribution Workflow
+
+The workflow depends on your role:
+
+#### External Contributors (Recommended for most contributors)
+
+1. **Fork the repository** to your GitHub account
+2. **Clone your fork** locally
+3. **Create a feature branch** in your fork
+4. **Make your changes** and commit them
+5. **Push to your fork**
+6. **Submit a Pull Request** from your fork to the original repository
+
+#### Core Maintainers (Team members with write access)
+
+1. **Clone the repository** directly (no fork needed)
+2. **Create a feature branch** (e.g., `feature/your-feature` or `fix/issue-123`)
+3. **Make your changes** and commit them
+4. **Push your branch** to the repository
+5. **Submit a Pull Request** from your branch to `main` or `dev`
+
+### Before You Begin
 
 1. Check if there's already an [issue](https://github.com/T-Eberle/paperless-docling-parser/issues) for what you want to work on
 2. If not, create a new issue to discuss your proposed changes
-3. Fork the repository and create a branch for your work
+3. Follow the appropriate workflow above based on your contributor type
 4. Make your changes and submit a pull request
 
 ## Development Setup
@@ -123,10 +148,18 @@ We welcome various types of contributions:
 - **Performance**: Optimize code for better performance
 - **Refactoring**: Improve code quality and maintainability
 
-### Workflow
+### Detailed Workflow Steps
 
 1. **Create a branch:**
 
+For external contributors (in your fork):
+```bash
+git checkout -b feature/your-feature-name
+# or
+git checkout -b fix/issue-number-description
+```
+
+For core maintainers (in the main repository):
 ```bash
 git checkout -b feature/your-feature-name
 # or
@@ -168,17 +201,25 @@ Use conventional commit messages:
 - `perf:` for performance improvements
 - `chore:` for maintenance tasks
 
-5. **Push to your fork:**
+5. **Push your changes:**
 
+For external contributors (to your fork):
+```bash
+git push origin feature/your-feature-name
+```
+
+For core maintainers (to the main repository):
 ```bash
 git push origin feature/your-feature-name
 ```
 
 6. **Create a Pull Request:**
-   - Go to the original repository
+   - Go to the original repository on GitHub
    - Click "New Pull Request"
-   - Select your branch
+   - For external contributors: Select "compare across forks" and choose your fork's branch
+   - For core maintainers: Select your branch from the dropdown
    - Fill in the PR template with details about your changes
+   - Request review from maintainers
 
 ## Coding Standards
 
