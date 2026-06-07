@@ -1,0 +1,31 @@
+[build-system]
+requires = ["hatchling>=1.24"]
+build-backend = "hatchling.build"
+
+[project]
+name = "paperless-docling-parser-core"
+dynamic = ["version"]
+description = "Core classes for paperless-docling-parser"
+readme = "README.md"
+requires-python = ">=3.10,<3.14"
+license = "MIT"
+authors = [
+  { name = "T-Eberle" },
+]
+
+# Core dependencies needed by both local and docling_serve
+dependencies = [
+    "docling-core>=2.0.0",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/core"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "src/",
+    "../../VERSION",
+]
+[tool.hatch.version]
+path = "../../VERSION"
+pattern = "(?P<version>.+)"

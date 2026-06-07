@@ -1,0 +1,101 @@
+services:
+  # PostgreSQL Database
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    volumes:
+      - paperless_pgdata:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: paperless
+      POSTGRES_USER: paperless
+      POSTGRES_PASSWORD: paperless
+    networks:
+      - paperless
+
+  # Redis Broker
+  broker:
+    image: docker.io/library/redis:7
+    restart: unless-stopped
+    volumes:
+      - paperless_redisdata:/data
+    networks:
+      - paperless
+
+  # Docling-Serve API Service
+  #docling-serve:
+  #  image: ds4sd/docling-serve:latest
+  #  restart: unless-stopped
+  #  ports:
+  #    - "5000:5000"
+  #  environment:
+  #    # Configure docling-serve settings
+  #    DOCLING_SERVE_PORT: 5000
+  #    DOCLING_SERVE_HOST: 0.0.0.0
+  #  volumes:
+  #    - paperless_docling_models:/root/.cache/docling/models
+  #  networks:
+  #    - paperless
+    # Uncomment the following lines if you have a GPU available
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+
+  # Paperless-ngx with Docling Parser Plugin
+  webserver:
+    build:
+      context: .
+      dockerfile: Dockerfile.docling_serve
+    restart: unless-stopped
+    depends_on:
+      - db
+      - broker
+    #  - docling-serve
+    ports:
+      - "8000:8000"
+    volumes:
+      - paperless_data:/usr/src/paperless/data
+      - paperless_media:/usr/src/paperless/media
+      - paperless_export:/usr/src/paperless/export
+      - paperless_consume:/usr/src/paperless/consume
+      - paperless_docling_models:/home/paperless/.cache/docling/models
+    environment:
+      PAPERLESS_REDIS: redis://broker:6379
+      PAPERLESS_DBHOST: db
+      PAPERLESS_DBNAME: paperless
+      PAPERLESS_DBUSER: paperless
+      PAPERLESS_DBPASS: paperless
+      PAPERLESS_DBPORT: 5432
+      # Paperless-ngx configuration
+      PAPERLESS_SECRET_KEY: change-me-to-a-random-string
+      PAPERLESS_URL: http://localhost:8000
+      PAPERLESS_TIME_ZONE: Europe/Berlin
+      PAPERLESS_OCR_LANGUAGE: deu+eng
+      # Admin user (created on first run)
+      PAPERLESS_ADMIN_USER: admin
+      PAPERLESS_ADMIN_PASSWORD: admin
+      PAPERLESS_ADMIN_MAIL: admin@example.com
+      # Enable the docling parser
+      PAPERLESS_ENABLE_COMPRESSION: "true"
+      # Docling-serve configuration
+      PAPERLESS_DOCLING_SERVE_URL: "http://10.0.10.55:5001"
+      PAPERLESS_DOCLING_SERVE_TIMEOUT: "300.0"
+      PAPERLESS_DOCLING_SERVE_MAX_RETRIES: "3"
+      PAPERLESS_DOCLING_PDF_CONVERSION_MODE: "easyocr"
+    networks:
+      - paperless
+
+volumes:
+  paperless_data:
+  paperless_media:
+  paperless_pgdata:
+  paperless_redisdata:
+  paperless_export:
+  paperless_consume:
+  paperless_docling_models:
+
+networks:
+  paperless:

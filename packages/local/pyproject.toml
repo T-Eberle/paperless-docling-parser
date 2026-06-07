@@ -1,0 +1,23 @@
+[build-system]
+requires = ["hatchling>=1.24"]
+build-backend = "hatchling.build"
+
+[project]
+name = "paperless-docling-parser-local"
+version = "0.1.0"
+description = "Local converter for paperless-docling-parser (for local development)"
+readme = "README.md"
+requires-python = ">=3.10,<3.14"
+license = "MIT"
+authors = [
+  { name = "T-Eberle" },
+]
+
+# Dependencies specific to local converter
+# TODO: Add docling and other local processing dependencies when implemented
+dependencies = [
+    "paperless-docling-parser-core==0.1.0",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/local"]
