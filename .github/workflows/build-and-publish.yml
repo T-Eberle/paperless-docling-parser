@@ -56,7 +56,7 @@ jobs:
     # Only publish when pushing to main branch
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     environment:
-      name: Pypi (prod)
+      name: production
       url: https://pypi.org/project/paperless-docling-parser-docling-serve/
     
     steps:

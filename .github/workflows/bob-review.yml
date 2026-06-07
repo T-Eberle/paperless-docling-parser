@@ -16,6 +16,8 @@ jobs:
       !endsWith(github.event.pull_request.user.login, '[bot]')
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    environment:
+      name: production
     permissions:
       pull-requests: write
       contents: read
