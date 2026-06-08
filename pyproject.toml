@@ -1,0 +1,91 @@
+[build-system]
+requires = ["hatchling>=1.24", "hatch-vcs>=0.3.0"]
+build-backend = "hatchling.build"
+
+[tool.uv.sources]
+pgx-docling-parser-core = { path = "packages/core", editable = true }
+pgx-docling-parser-local = { path = "packages/local", editable = true }
+pgx-docling-parser-serve = { path = "packages/docling_serve", editable = true }
+
+[project]
+name = "paperless-docling-parser"
+dynamic = ["version"]
+description = "Paperless-ngx docling parser plugin: Parses several types of document files (pdf) inside paperless ngx."
+readme = "README.md"
+requires-python = ">=3.10,<3.14"
+license = "MIT"
+authors = [
+  { name = "T-Eberle" },
+]
+keywords = ["paperless", "paperless-ngx", "docling", "pdf"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Framework :: Django",
+  "Intended Audience :: System Administrators",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: POSIX :: Linux",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Communications :: Email",
+  "Topic :: Office/Business",
+]
+
+# Base dependencies - common to all variants
+dependencies = [
+    "pymupdf>=1.23.0",
+    "docling-core>=2.0.0",
+    "Pillow>=10.0.0",
+]
+
+[project.optional-dependencies]
+# Local converter variant (for local development)
+local = [
+    "pgx-docling-parser-local",
+]
+
+# Docling-serve remote converter variant
+docling-serve = [
+    "pgx-docling-parser-serve",
+]
+
+# Development dependencies
+dev = [
+    "pytest>=7.0",
+    "pytest-asyncio>=0.21.0",
+    "reportlab>=4.0.0",
+    "black>=23.0",
+    "ruff>=0.1.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/T-Eberle/paperless-docling-parser"
+Issues = "https://github.com/T-Eberle/paperless-docling-parser/issues"
+
+
+[project.entry-points."paperless_ngx.parsers"]
+docling = "paperless_ngx_docling.parsers:DoclingParser"
+
+[tool.hatch.version]
+source = "vcs"
+fallback-version = "0.0.0.dev0"
+
+[tool.hatch.build.hooks.vcs]
+version-file = "src/paperless_ngx_docling/_version.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/paperless_ngx_docling"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+asyncio_mode = "auto"
+markers = [
+    "integration: marks tests as integration tests (require running docling-serve)",
+]
+addopts = [
+    "-v",
+    "--strict-markers",
+    "--tb=short",
+]

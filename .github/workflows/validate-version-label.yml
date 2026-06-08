@@ -1,0 +1,92 @@
+name: Validate Version Label
+
+on:
+  pull_request:
+    types: [opened, labeled, unlabeled, synchronize]
+    branches:
+      - main
+
+jobs:
+  validate-version-label:
+    name: Check for exactly one version label
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Check version labels
+        env:
+          PR_LABELS: ${{ toJson(github.event.pull_request.labels.*.name) }}
+        run: |
+          echo "PR Labels: $PR_LABELS"
+          
+          # Count version labels
+          MAJOR_COUNT=$(echo "$PR_LABELS" | grep -o "version:major" | wc -l)
+          MINOR_COUNT=$(echo "$PR_LABELS" | grep -o "version:minor" | wc -l)
+          PATCH_COUNT=$(echo "$PR_LABELS" | grep -o "version:patch" | wc -l)
+          
+          TOTAL_VERSION_LABELS=$((MAJOR_COUNT + MINOR_COUNT + PATCH_COUNT))
+          
+          echo "Version labels found:"
+          echo "  - version:major: $MAJOR_COUNT"
+          echo "  - version:minor: $MINOR_COUNT"
+          echo "  - version:patch: $PATCH_COUNT"
+          echo "  - Total: $TOTAL_VERSION_LABELS"
+          
+          if [ $TOTAL_VERSION_LABELS -eq 0 ]; then
+            echo "❌ ERROR: No version label found!"
+            echo ""
+            echo "Please add exactly ONE of the following labels to this PR:"
+            echo "  - version:patch (for bug fixes)"
+            echo "  - version:minor (for new features)"
+            echo "  - version:major (for breaking changes)"
+            exit 1
+          elif [ $TOTAL_VERSION_LABELS -gt 1 ]; then
+            echo "❌ ERROR: Multiple version labels found!"
+            echo ""
+            echo "Please keep only ONE version label on this PR:"
+            echo "  - version:patch (for bug fixes)"
+            echo "  - version:minor (for new features)"
+            echo "  - version:major (for breaking changes)"
+            exit 1
+          else
+            echo "✅ SUCCESS: Exactly one version label found!"
+            
+            if [ $MAJOR_COUNT -eq 1 ]; then
+              echo "   Version bump: MAJOR (breaking changes)"
+            elif [ $MINOR_COUNT -eq 1 ]; then
+              echo "   Version bump: MINOR (new features)"
+            elif [ $PATCH_COUNT -eq 1 ]; then
+              echo "   Version bump: PATCH (bug fixes)"
+            fi
+          fi
+      
+      - name: Comment on PR (if validation fails)
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const labels = ${{ toJson(github.event.pull_request.labels.*.name) }};
+            const versionLabels = labels.filter(l => l.startsWith('version:'));
+            
+            let message = '## ⚠️ Version Label Validation Failed\n\n';
+            
+            if (versionLabels.length === 0) {
+              message += '**No version label found!**\n\n';
+              message += 'Please add exactly **ONE** of the following labels to this PR:\n';
+            } else {
+              message += `**Multiple version labels found:** ${versionLabels.join(', ')}\n\n`;
+              message += 'Please keep only **ONE** version label on this PR:\n';
+            }
+            
+            message += '- `version:patch` - for bug fixes (v0.1.0 → v0.1.1)\n';
+            message += '- `version:minor` - for new features (v0.1.0 → v0.2.0)\n';
+            message += '- `version:major` - for breaking changes (v0.1.0 → v1.0.0)\n\n';
+            message += 'The PR cannot be merged until exactly one version label is present.';
+            
+            github.rest.issues.createComment({
+              issue_number: context.payload.pull_request.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: message
+            });
+
+# Made with Bob

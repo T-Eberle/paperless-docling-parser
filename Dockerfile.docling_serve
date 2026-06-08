@@ -1,0 +1,26 @@
+# Use the official Paperless-ngx image as base
+FROM ghcr.io/paperless-ngx/paperless-ngx:beta
+
+# Switch to root to install packages
+USER root
+
+# Install minimal system dependencies (only what's needed for PyMuPDF for thumbnails)
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    libgl1 \
+    libglib2.0-0 && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+# Copy the plugin source code
+COPY . /tmp/paperless-docling-parser/
+
+# Install the plugin with docling-serve variant
+# First install core package, then docling-serve package, then main package
+RUN pip install --no-cache-dir /tmp/paperless-docling-parser/packages/core/ && \
+    pip install --no-cache-dir /tmp/paperless-docling-parser/packages/docling_serve/ && \
+    pip install --no-cache-dir /tmp/paperless-docling-parser/[docling-serve] && \
+    rm -rf /tmp/paperless-docling-parser
+
+# Switch back to paperless user
+USER paperless
