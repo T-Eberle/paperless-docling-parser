@@ -39,9 +39,11 @@ uv sync --extra dev
 ### Automated Release Workflow (PRs to main only)
 1. Developer adds exactly ONE version label to PR targeting `main`: `version:patch`, `version:minor`, or `version:major`
 2. `validate-version-label.yml` ensures exactly one version label exists (blocks merge if missing/multiple)
-3. When PR is merged to `main`, `auto-tag.yml` reads the label and creates appropriate tag
-4. Tag creation triggers `publish-release.yml`
-5. Packages are built, published to PyPI, and GitHub Release is created
+3. When PR is merged to `main`, `tag-and-release.yml` workflow runs with two separate jobs:
+   - **Job 1: create-tag** - Reads the label, calculates new version, and creates git tag
+   - **Job 2: build-and-publish** - Builds packages, publishes to PyPI, and creates GitHub Release
+4. The workflow is idempotent: if a tag already exists, only the build-and-publish job runs
+5. Manual reruns are supported via workflow_dispatch with a tag parameter (e.g., `v1.0.0`)
 
 ### Version Labels (Required on PRs to main only)
 - **`version:patch`** - Bug fixes (v0.1.0 → v0.1.1)
@@ -100,7 +102,17 @@ The entire workflow is contained in a single `convert_async()` method:
 - Tests verify `DoclingDocument` structure, not just string output
 
 ### Package Publishing
-- Publishing is automated via GitHub Actions on tag creation
+- Publishing is automated via GitHub Actions in `tag-and-release.yml`
+- Workflow has two separate jobs: tag creation and build/publish
+- Build/publish job can be manually triggered via workflow_dispatch for existing tags
+- This allows rebuilding/republishing without creating a new tag
 - Manual publishing: Build commands must be run from package directories (not root)
 - Packages are published separately: core first, then docling_serve, then local
 - GitHub Actions uses `PYPI_TOKEN` secret for authentication
+
+### Manual Rebuild from Existing Tag
+To rebuild and republish an existing release:
+1. Go to Actions → "Auto Tag and Publish Release" workflow
+2. Click "Run workflow"
+3. Enter the existing tag (e.g., `v1.0.0`)
+4. The workflow will checkout that tag, build packages, and publish to PyPI

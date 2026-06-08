@@ -5,20 +5,25 @@ on:
     types: [closed]
     branches:
       - main
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to build and publish (e.g., v1.0.0)'
+        required: true
+        type: string
 
 jobs:
-  auto-tag-and-publish:
-    name: Create version tag and publish to PyPI
-    # Only run if PR was merged (not just closed)
-    if: github.event.pull_request.merged == true
+  create-tag:
+    name: Create version tag from PR
+    # Only run on PR merge, not on manual dispatch
+    if: github.event_name == 'pull_request' && github.event.pull_request.merged == true
     runs-on: ubuntu-latest
-    environment:
-      name: production
-      url: https://pypi.org/project/pgx-docling-parser-serve/
     permissions:
       contents: write
       pull-requests: write
-      id-token: write  # For trusted publishing to PyPI (optional)
+    outputs:
+      new_version: ${{ steps.new_version.outputs.new_version }}
+      tag_created: ${{ steps.create_tag.outputs.created }}
     
     steps:
       - name: Checkout code
@@ -120,6 +125,7 @@ jobs:
           fi
       
       - name: Create and push tag
+        id: create_tag
         if: steps.check_tag.outputs.exists == 'false'
         run: |
           NEW_VERSION="${{ steps.new_version.outputs.new_version }}"
@@ -135,40 +141,79 @@ jobs:
           
           git push origin "$NEW_VERSION"
           
+          echo "created=true" >> $GITHUB_OUTPUT
           echo "✅ Created and pushed tag: $NEW_VERSION"
       
-      - name: Checkout the new tag
-        if: steps.check_tag.outputs.exists == 'false'
-        run: |
-          NEW_VERSION="${{ steps.new_version.outputs.new_version }}"
-          # Fetch all tags to ensure the new tag is visible
-          git fetch --tags --force
-          # Checkout the tag so hatch-vcs can detect it
-          git checkout "$NEW_VERSION"
-          echo "✅ Checked out tag $NEW_VERSION"
-      
       - name: Skip tagging
+        id: skip_tag
         if: steps.check_tag.outputs.exists == 'true'
         run: |
+          echo "created=false" >> $GITHUB_OUTPUT
           echo "⏭️  Skipping tag creation - tag already exists"
       
+      - name: Comment on PR
+        if: steps.create_tag.outputs.created == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const newVersion = '${{ steps.new_version.outputs.new_version }}';
+            const bumpType = '${{ steps.version_bump.outputs.bump_type }}';
+            
+            github.rest.issues.createComment({
+              issue_number: context.payload.pull_request.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `🏷️ **Tag ${newVersion}** created successfully!\n\n- Version bump: ${bumpType}\n- Build and publish job will run automatically`
+            });
+  
+  build-and-publish:
+    name: Build and publish packages to PyPI
+    # Run after tag creation OR on manual dispatch
+    needs: [create-tag]
+    if: |
+      always() &&
+      (needs.create-tag.result == 'success' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://pypi.org/project/pgx-docling-parser-serve/
+    permissions:
+      contents: write
+      id-token: write  # For trusted publishing to PyPI (optional)
+    
+    steps:
+      - name: Determine tag to build
+        id: determine_tag
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TAG="${{ inputs.tag }}"
+            echo "Building from manual dispatch: $TAG"
+          else
+            TAG="${{ needs.create-tag.outputs.new_version }}"
+            echo "Building from newly created tag: $TAG"
+          fi
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+      
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history needed for version calculation
+          ref: ${{ steps.determine_tag.outputs.tag }}
+      
       - name: Install uv
-        if: steps.check_tag.outputs.exists == 'false'
         uses: astral-sh/setup-uv@v3
         with:
           enable-cache: true
       
       - name: Set up Python
-        if: steps.check_tag.outputs.exists == 'false'
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
       
       - name: Verify version detection
-        if: steps.check_tag.outputs.exists == 'false'
         run: |
-          NEW_VERSION="${{ steps.new_version.outputs.new_version }}"
-          TAG_VERSION=${NEW_VERSION#v}
+          TAG="${{ steps.determine_tag.outputs.tag }}"
+          TAG_VERSION=${TAG#v}
           echo "Expected version: $TAG_VERSION"
           
           # Verify hatch-vcs can detect the version in each package
@@ -189,25 +234,21 @@ jobs:
           echo "TAG_VERSION=$TAG_VERSION" >> $GITHUB_ENV
       
       - name: Build core package
-        if: steps.check_tag.outputs.exists == 'false'
         run: |
           cd packages/core
           uv build
       
       - name: Build docling-serve package
-        if: steps.check_tag.outputs.exists == 'false'
         run: |
           cd packages/docling_serve
           uv build
-      
+      # Not implemented yet.
       #- name: Build local package
-      #  if: steps.check_tag.outputs.exists == 'false'
       #  run: |
       #    cd packages/local
       #    uv build
       
       - name: Publish core package to PyPI
-        if: steps.check_tag.outputs.exists == 'false'
         env:
           UV_PUBLISH_TOKEN: ${{ secrets.PYPI_TOKEN }}
         run: |
@@ -215,15 +256,13 @@ jobs:
           uv publish
       
       - name: Publish docling-serve package to PyPI
-        if: steps.check_tag.outputs.exists == 'false'
         env:
           UV_PUBLISH_TOKEN: ${{ secrets.PYPI_TOKEN }}
         run: |
           cd packages/docling_serve
           uv publish
-      
+      # Not implemented yet.
       #- name: Publish local package to PyPI
-      #  if: steps.check_tag.outputs.exists == 'false'
       #  env:
       #    UV_PUBLISH_TOKEN: ${{ secrets.PYPI_TOKEN }}
       #  run: |
@@ -231,31 +270,31 @@ jobs:
       #    uv publish
       
       - name: Create GitHub Release
-        if: steps.check_tag.outputs.exists == 'false'
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ steps.new_version.outputs.new_version }}
+          tag_name: ${{ steps.determine_tag.outputs.tag }}
           files: |
             packages/core/dist/*
             packages/docling_serve/dist/*
+#            Not implemented yet.
 #            packages/local/dist/*
           generate_release_notes: true
           draft: false
           prerelease: false
       
-      - name: Comment on PR
-        if: steps.check_tag.outputs.exists == 'false'
+      - name: Comment on PR (if triggered by PR)
+        if: github.event_name == 'pull_request'
         uses: actions/github-script@v7
         with:
           script: |
-            const newVersion = '${{ steps.new_version.outputs.new_version }}';
-            const bumpType = '${{ steps.version_bump.outputs.bump_type }}';
+            const tag = '${{ steps.determine_tag.outputs.tag }}';
+            const bumpType = '${{ needs.create-tag.outputs.bump_type }}';
             
             github.rest.issues.createComment({
               issue_number: context.payload.pull_request.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `🚀 **Release ${newVersion}** published successfully!\n\n- Version bump: ${bumpType}\n- Packages published to PyPI\n- GitHub Release created`
+              body: `🚀 **Release ${tag}** published successfully!\n\n- Packages published to PyPI\n- GitHub Release created`
             });
 
 # Made with Bob
