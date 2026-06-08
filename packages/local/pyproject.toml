@@ -16,7 +16,7 @@ authors = [
 # Dependencies specific to local converter
 # TODO: Add docling and other local processing dependencies when implemented
 dependencies = [
-    "pgx-docling-parser-core",
+    "pgx-docling-parser-core==0.0.0",
 ]
 
 [tool.hatch.build.targets.wheel]

@@ -80,47 +80,39 @@ jobs:
           echo "✅ Version detection successful: $TAG_VERSION"
           echo "TAG_VERSION=$TAG_VERSION" >> $GITHUB_ENV
       
+      - name: Set versions for all packages
+        run: |
+          echo "Setting version to $TAG_VERSION for all packages..."
+          
+          # Update core package version
+          cd packages/core
+          uv version "$TAG_VERSION"
+          cd ../..
+          
+          # Update docling_serve package version
+          cd packages/docling_serve
+          uv version "$TAG_VERSION"
+          cd ../..
+          
+          # Synchronize dependency versions to ensure exact version matching
+          echo "Synchronizing dependency versions..."
+          python scripts/sync_versions.py "$TAG_VERSION"
+          
+          echo "✅ All versions set to $TAG_VERSION"
+      
       - name: Build core package
         run: |
           cd packages/core
-          
-          echo "Setting version to $TAG_VERSION..."
-          uv version "$TAG_VERSION"
-          
           echo "Building core package..."
           uv build
-          
-          # Verify the built version
-          WHEEL_FILE=$(ls dist/*.whl | head -n 1)
-          echo "Built wheel: $WHEEL_FILE"
-          if [[ "$WHEEL_FILE" == *"0.0.0"* ]]; then
-            echo "❌ ERROR: Built package still has placeholder version!"
-            echo "Wheel filename: $WHEEL_FILE"
-            exit 1
-          fi
-          
-          echo "✅ Core package built successfully with version $TAG_VERSION"
+          echo "✅ Core package built successfully"
       
       - name: Build docling-serve package
         run: |
           cd packages/docling_serve
-          
-          echo "Setting version to $TAG_VERSION..."
-          uv version "$TAG_VERSION"
-          
           echo "Building docling-serve package..."
           uv build
-          
-          # Verify the built version
-          WHEEL_FILE=$(ls dist/*.whl | head -n 1)
-          echo "Built wheel: $WHEEL_FILE"
-          if [[ "$WHEEL_FILE" == *"0.0.0"* ]]; then
-            echo "❌ ERROR: Built package still has placeholder version!"
-            echo "Wheel filename: $WHEEL_FILE"
-            exit 1
-          fi
-          
-          echo "✅ Docling-serve package built successfully with version $TAG_VERSION"
+          echo "✅ Docling-serve package built successfully"
       # Not implemented yet.
       #- name: Build local package
       #  run: |

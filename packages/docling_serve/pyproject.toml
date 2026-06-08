@@ -15,7 +15,7 @@ authors = [
 
 # Dependencies specific to docling_serve (remote API client)
 dependencies = [
-    "pgx-docling-parser-core",
+    "pgx-docling-parser-core==0.0.0",
     "httpx>=0.27.0",
     "tenacity>=8.2.0",
 ]
@@ -24,7 +24,7 @@ dependencies = [
 docling = "pgx_docling_serve.parsers:DoclingRemoteParser"
 
 [tool.uv.sources]
-pgx-docling-parser-core = { path = "../core", editable = true }
+pgx-docling-parser-core = { editable = true, workspace = true }
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/pgx_docling_serve"]
