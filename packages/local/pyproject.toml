@@ -20,4 +20,4 @@ dependencies = [
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/local"]
+packages = ["src/pgx_docling_local"]

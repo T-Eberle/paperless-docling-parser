@@ -24,7 +24,7 @@ dependencies = [
 pgx-docling-parser-core = { path = "../core", editable = true }
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/docling_serve"]
+packages = ["src/pgx_docling_serve"]
 
 [tool.hatch.build.targets.sdist]
 include = [
