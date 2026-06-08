@@ -200,11 +200,11 @@ jobs:
           cd packages/docling_serve
           uv build
       
-      - name: Build local package
-        if: steps.check_tag.outputs.exists == 'false'
-        run: |
-          cd packages/local
-          uv build
+      #- name: Build local package
+      #  if: steps.check_tag.outputs.exists == 'false'
+      #  run: |
+      #    cd packages/local
+      #    uv build
       
       - name: Publish core package to PyPI
         if: steps.check_tag.outputs.exists == 'false'
@@ -222,13 +222,13 @@ jobs:
           cd packages/docling_serve
           uv publish
       
-      - name: Publish local package to PyPI
-        if: steps.check_tag.outputs.exists == 'false'
-        env:
-          UV_PUBLISH_TOKEN: ${{ secrets.PYPI_TOKEN }}
-        run: |
-          cd packages/local
-          uv publish
+      #- name: Publish local package to PyPI
+      #  if: steps.check_tag.outputs.exists == 'false'
+      #  env:
+      #    UV_PUBLISH_TOKEN: ${{ secrets.PYPI_TOKEN }}
+      #  run: |
+      #    cd packages/local
+      #    uv publish
       
       - name: Create GitHub Release
         if: steps.check_tag.outputs.exists == 'false'
@@ -238,7 +238,7 @@ jobs:
           files: |
             packages/core/dist/*
             packages/docling_serve/dist/*
-            packages/local/dist/*
+#            packages/local/dist/*
           generate_release_notes: true
           draft: false
           prerelease: false
