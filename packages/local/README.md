@@ -1,6 +1,6 @@
-# paperless-docling-parser-local
+# pgx-docling-parser-local
 
-Local converter for paperless-docling-parser (for local development).
+Local converter for pgx-docling-parser (for local development).
 
 This package provides a local document converter for development purposes.
 
@@ -13,7 +13,7 @@ This package provides a local document converter for development purposes.
 Once implemented, this package will be automatically installed when you install the main package with the `local` extra:
 
 ```bash
-pip install paperless-docling-parser[local]
+pip install pgx-docling-parser[local]
 ```
 
 ## Planned Features

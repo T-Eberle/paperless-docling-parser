@@ -3,7 +3,7 @@ requires = ["hatchling>=1.24", "hatch-vcs>=0.3.0"]
 build-backend = "hatchling.build"
 
 [project]
-name = "paperless-docling-parser-core"
+name = "pgx-docling-parser-core"
 dynamic = ["version"]
 description = "Core classes for paperless-docling-parser"
 readme = "README.md"

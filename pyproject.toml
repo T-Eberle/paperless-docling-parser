@@ -3,9 +3,9 @@ requires = ["hatchling>=1.24", "hatch-vcs>=0.3.0"]
 build-backend = "hatchling.build"
 
 [tool.uv.sources]
-paperless-docling-parser-core = { path = "packages/core", editable = true }
-paperless-docling-parser-local = { path = "packages/local", editable = true }
-paperless-docling-parser-docling-serve = { path = "packages/docling_serve", editable = true }
+pgx-docling-parser-core = { path = "packages/core", editable = true }
+pgx-docling-parser-local = { path = "packages/local", editable = true }
+pgx-docling-parser-serve = { path = "packages/docling_serve", editable = true }
 
 [project]
 name = "paperless-docling-parser"
@@ -40,12 +40,12 @@ dependencies = [
 [project.optional-dependencies]
 # Local converter variant (for local development)
 local = [
-    "paperless-docling-parser-local",
+    "pgx-docling-parser-local",
 ]
 
 # Docling-serve remote converter variant
 docling-serve = [
-    "paperless-docling-parser-docling-serve",
+    "pgx-docling-parser-serve",
 ]
 
 # Development dependencies

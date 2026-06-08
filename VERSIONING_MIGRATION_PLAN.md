@@ -81,7 +81,7 @@ version-file = "src/paperless_ngx_docling/_version.py"
 #### `packages/core/pyproject.toml`
 ```toml
 [project]
-name = "paperless-docling-parser-core"
+name = "pgx-docling-parser-core"
 dynamic = ["version"]
 # ... rest of config
 
@@ -96,7 +96,7 @@ include = ["src/"]  # Remove ../../VERSION reference
 #### `packages/docling_serve/pyproject.toml`
 ```toml
 [project]
-name = "paperless-docling-parser-docling-serve"
+name = "pgx-docling-parser-serve"
 dynamic = ["version"]
 # ... rest of config
 
@@ -111,7 +111,7 @@ include = ["src/"]  # Remove ../../VERSION reference
 #### `packages/local/pyproject.toml`
 ```toml
 [project]
-name = "paperless-docling-parser-local"
+name = "pgx-docling-parser-local"
 dynamic = ["version"]  # Change from hardcoded version
 # ... rest of config
 
@@ -128,17 +128,17 @@ Since all packages will share the same version, update dependency constraints:
 ```toml
 [project.optional-dependencies]
 local = [
-    "paperless-docling-parser-local",  # Remove version pin
+    "pgx-docling-parser-local",  # Remove version pin
 ]
 docling-serve = [
-    "paperless-docling-parser-docling-serve",  # Remove version pin
+    "pgx-docling-parser-serve",  # Remove version pin
 ]
 ```
 
 #### `packages/docling_serve/pyproject.toml`
 ```toml
 dependencies = [
-    "paperless-docling-parser-core",  # Remove version constraint
+    "pgx-docling-parser-core",  # Remove version constraint
     "httpx>=0.27.0",
     "tenacity>=8.2.0",
 ]
@@ -147,7 +147,7 @@ dependencies = [
 #### `packages/local/pyproject.toml`
 ```toml
 dependencies = [
-    "paperless-docling-parser-core",  # Remove version pin
+    "pgx-docling-parser-core",  # Remove version pin
 ]
 ```
 
@@ -250,7 +250,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: production
-      url: https://pypi.org/project/paperless-docling-parser-docling-serve/
+      url: https://pypi.org/project/pgx-docling-parser-serve/
     permissions:
       contents: write  # For creating GitHub releases
       id-token: write  # For trusted publishing to PyPI (optional)

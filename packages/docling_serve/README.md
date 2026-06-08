@@ -1,6 +1,6 @@
-# paperless-docling-parser-docling-serve
+# pgx-docling-parser-serve
 
-Remote converter for paperless-docling-parser using docling-serve API.
+Remote converter for pgx-docling-parser using docling-serve API.
 
 This package provides a remote document converter that uses the docling-serve API for document processing.
 
@@ -9,7 +9,7 @@ This package provides a remote document converter that uses the docling-serve AP
 This package is automatically installed when you install the main package with the `docling-serve` extra:
 
 ```bash
-pip install paperless-docling-parser[docling-serve]
+pip install pgx-docling-parser[docling-serve]
 ```
 
 ## Configuration

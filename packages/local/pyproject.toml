@@ -8,9 +8,9 @@ root = "../.."
 fallback-version = "0.0.0.dev0"
 
 [project]
-name = "paperless-docling-parser-local"
+name = "pgx-docling-parser-local"
 dynamic = ["version"]
-description = "Local converter for paperless-docling-parser (for local development)"
+description = "Local converter for pgx-docling-parser (for local development)"
 readme = "README.md"
 requires-python = ">=3.10,<3.14"
 license = "MIT"
@@ -21,7 +21,7 @@ authors = [
 # Dependencies specific to local converter
 # TODO: Add docling and other local processing dependencies when implemented
 dependencies = [
-    "paperless-docling-parser-core",
+    "pgx-docling-parser-core",
 ]
 
 [tool.hatch.build.targets.wheel]

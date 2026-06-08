@@ -8,9 +8,9 @@ root = "../.."
 fallback-version = "0.0.0.dev0"
 
 [project]
-name = "paperless-docling-parser-docling-serve"
+name = "pgx-docling-parser-serve"
 dynamic = ["version"]
-description = "Docling-serve remote converter for paperless-docling-parser"
+description = "Docling-serve remote converter for pgx-docling-parser"
 readme = "README.md"
 requires-python = ">=3.10,<3.14"
 license = "MIT"
@@ -20,13 +20,13 @@ authors = [
 
 # Dependencies specific to docling_serve (remote API client)
 dependencies = [
-    "paperless-docling-parser-core",
+    "pgx-docling-parser-core",
     "httpx>=0.27.0",
     "tenacity>=8.2.0",
 ]
 
 [tool.uv.sources]
-paperless-docling-parser-core = { path = "../core", editable = true }
+pgx-docling-parser-core = { path = "../core", editable = true }
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/docling_serve"]
