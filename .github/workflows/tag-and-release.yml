@@ -137,6 +137,13 @@ jobs:
           
           echo "✅ Created and pushed tag: $NEW_VERSION"
       
+      - name: Fetch new tag
+        if: steps.check_tag.outputs.exists == 'false'
+        run: |
+          NEW_VERSION="${{ steps.new_version.outputs.new_version }}"
+          git fetch origin "$NEW_VERSION"
+          echo "✅ Fetched tag $NEW_VERSION into local repository"
+      
       - name: Skip tagging
         if: steps.check_tag.outputs.exists == 'true'
         run: |
@@ -203,6 +210,12 @@ jobs:
         run: |
           cd packages/local
           uv publish
+      
+      - name: Ensure tags are up to date for release
+        if: steps.check_tag.outputs.exists == 'false'
+        run: |
+          git fetch --tags
+          echo "✅ Refreshed tags for GitHub Release creation"
       
       - name: Create GitHub Release
         if: steps.check_tag.outputs.exists == 'false'
