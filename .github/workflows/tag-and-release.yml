@@ -246,54 +246,48 @@ jobs:
           TAG_VERSION=${TAG#v}
           echo "✅ Version detection successful: $TAG_VERSION"
           echo "TAG_VERSION=$TAG_VERSION" >> $GITHUB_ENV
-          
-          # Debug git state for hatch-vcs
-          echo "Git describe output: $(git describe --tags --long --dirty)"
-          echo "Git HEAD: $(git rev-parse HEAD)"
-          echo "Git tag list:"
-          git tag -l --contains HEAD
       
       - name: Build core package
         run: |
           cd packages/core
           
-          # Set version explicitly for hatch-vcs via environment
-          export HATCH_BUILD_HOOK_ENABLE_VCS=true
+          echo "Setting version to $TAG_VERSION..."
+          uv version "$TAG_VERSION"
           
-          echo "Building core package with version $TAG_VERSION..."
+          echo "Building core package..."
           uv build
           
           # Verify the built version
           WHEEL_FILE=$(ls dist/*.whl | head -n 1)
           echo "Built wheel: $WHEEL_FILE"
-          if [[ "$WHEEL_FILE" == *"0.0.0.dev0"* ]]; then
-            echo "❌ ERROR: Built package still has fallback version!"
+          if [[ "$WHEEL_FILE" == *"0.0.0"* ]]; then
+            echo "❌ ERROR: Built package still has placeholder version!"
             echo "Wheel filename: $WHEEL_FILE"
             exit 1
           fi
           
-          echo "✅ Core package built successfully with correct version"
+          echo "✅ Core package built successfully with version $TAG_VERSION"
       
       - name: Build docling-serve package
         run: |
           cd packages/docling_serve
           
-          # Set version explicitly for hatch-vcs via environment
-          export HATCH_BUILD_HOOK_ENABLE_VCS=true
+          echo "Setting version to $TAG_VERSION..."
+          uv version "$TAG_VERSION"
           
-          echo "Building docling-serve package with version $TAG_VERSION..."
+          echo "Building docling-serve package..."
           uv build
           
           # Verify the built version
           WHEEL_FILE=$(ls dist/*.whl | head -n 1)
           echo "Built wheel: $WHEEL_FILE"
-          if [[ "$WHEEL_FILE" == *"0.0.0.dev0"* ]]; then
-            echo "❌ ERROR: Built package still has fallback version!"
+          if [[ "$WHEEL_FILE" == *"0.0.0"* ]]; then
+            echo "❌ ERROR: Built package still has placeholder version!"
             echo "Wheel filename: $WHEEL_FILE"
             exit 1
           fi
           
-          echo "✅ Docling-serve package built successfully with correct version"
+          echo "✅ Docling-serve package built successfully with version $TAG_VERSION"
       # Not implemented yet.
       #- name: Build local package
       #  run: |

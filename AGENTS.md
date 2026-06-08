@@ -28,13 +28,14 @@ uv sync --extra dev
 ### Monorepo Structure with Editable Installs
 - Root `pyproject.toml` uses `[tool.uv.sources]` to reference packages as editable paths
 - Packages in `packages/` are separate but linked via editable installs
-- Version is determined by git tags using `hatch-vcs`, not a VERSION file
+- Version is managed using `uv version` command during CI builds
 
 ### Versioning and Release Process
 - Versions are determined by git tags in format `v{MAJOR}.{MINOR}.{PATCH}`
-- All packages (core, docling_serve, local) share the same version from git tags
-- Local development without tags uses `0.0.0.dev0+g{git_hash}` format
-- Version detection uses `hatch-vcs` plugin with `source = "vcs"`
+- All packages (core, docling_serve, local) share the same version
+- Local development uses `version = "0.0.0"` placeholder in `pyproject.toml` files
+- CI workflow uses `uv version <TAG_VERSION>` to set version before building
+- No version files are committed to git - versions are set dynamically during build
 
 ### Automated Release Workflow (PRs to main only)
 1. Developer adds exactly ONE version label to PR targeting `main`: `version:patch`, `version:minor`, or `version:major`
@@ -58,8 +59,9 @@ uv sync --extra dev
 
 ### Local Development
 - No manual version updates needed
-- Build commands work without tags (uses fallback version)
-- Version is automatically detected from git history
+- All `pyproject.toml` files have `version = "0.0.0"` placeholder
+- Build commands work with placeholder version for local testing
+- CI automatically sets correct version using `uv version` before publishing
 
 ### Converter Architecture
 - `BaseDoclingConverter` in `packages/core/src/core/base.py` defines abstract methods for 3 conversion modes
@@ -104,6 +106,11 @@ The entire workflow is contained in a single `convert_async()` method:
 ### Package Publishing
 - Publishing is automated via GitHub Actions in `tag-and-release.yml`
 - Workflow has two separate jobs: tag creation and build/publish
+- Build process:
+  1. Workflow extracts version from git tag (e.g., `v1.2.3` → `1.2.3`)
+  2. Runs `uv version 1.2.3` in each package directory to update `pyproject.toml`
+  3. Runs `uv build` to build packages with correct version
+  4. Version changes are temporary (only in CI runner, never committed)
 - Build/publish job can be manually triggered via workflow_dispatch for existing tags
 - This allows rebuilding/republishing without creating a new tag
 - Manual publishing: Build commands must be run from package directories (not root)
