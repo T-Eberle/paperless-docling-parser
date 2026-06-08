@@ -24,6 +24,7 @@ jobs:
     outputs:
       new_version: ${{ steps.new_version.outputs.new_version }}
       tag_created: ${{ steps.create_tag.outputs.created }}
+      bump_type: ${{ steps.version_bump.outputs.bump_type }}
     
     steps:
       - name: Checkout code
