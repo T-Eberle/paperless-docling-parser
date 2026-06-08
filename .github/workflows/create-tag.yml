@@ -1,0 +1,166 @@
+name: Create Version Tag
+
+on:
+  pull_request:
+    types: [closed]
+    branches:
+      - main
+
+jobs:
+  create-tag:
+    name: Create version tag from PR
+    # Only run on PR merge
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history needed for version calculation
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Validate version labels
+        id: validate
+        env:
+          PR_LABELS: ${{ toJson(github.event.pull_request.labels.*.name) }}
+        run: |
+          echo "PR Labels: $PR_LABELS"
+          
+          # Count version labels
+          MAJOR_COUNT=$(echo "$PR_LABELS" | grep -o "version:major" | wc -l)
+          MINOR_COUNT=$(echo "$PR_LABELS" | grep -o "version:minor" | wc -l)
+          PATCH_COUNT=$(echo "$PR_LABELS" | grep -o "version:patch" | wc -l)
+          
+          TOTAL_VERSION_LABELS=$((MAJOR_COUNT + MINOR_COUNT + PATCH_COUNT))
+          
+          if [ $TOTAL_VERSION_LABELS -ne 1 ]; then
+            echo "❌ ERROR: Expected exactly 1 version label, found $TOTAL_VERSION_LABELS"
+            echo "This should have been caught by the validation workflow!"
+            exit 1
+          fi
+          
+          echo "✅ Validation passed: exactly one version label found"
+      
+      - name: Get latest tag
+        id: get_latest_tag
+        run: |
+          # Get the latest tag, or use v0.0.0 if no tags exist
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          echo "latest_tag=$LATEST_TAG" >> $GITHUB_OUTPUT
+          echo "Latest tag: $LATEST_TAG"
+      
+      - name: Determine version bump from PR labels
+        id: version_bump
+        env:
+          PR_LABELS: ${{ toJson(github.event.pull_request.labels.*.name) }}
+        run: |
+          # Determine bump type from labels
+          if echo "$PR_LABELS" | grep -q "version:major"; then
+            BUMP_TYPE="major"
+          elif echo "$PR_LABELS" | grep -q "version:minor"; then
+            BUMP_TYPE="minor"
+          elif echo "$PR_LABELS" | grep -q "version:patch"; then
+            BUMP_TYPE="patch"
+          else
+            echo "❌ ERROR: No version label found (should not happen after validation)"
+            exit 1
+          fi
+          
+          echo "bump_type=$BUMP_TYPE" >> $GITHUB_OUTPUT
+          echo "Version bump type: $BUMP_TYPE"
+      
+      - name: Calculate new version
+        id: new_version
+        run: |
+          LATEST_TAG="${{ steps.get_latest_tag.outputs.latest_tag }}"
+          BUMP_TYPE="${{ steps.version_bump.outputs.bump_type }}"
+          
+          # Remove 'v' prefix and split version
+          VERSION=${LATEST_TAG#v}
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
+          
+          # Increment based on bump type
+          case $BUMP_TYPE in
+            major)
+              MAJOR=$((MAJOR + 1))
+              MINOR=0
+              PATCH=0
+              ;;
+            minor)
+              MINOR=$((MINOR + 1))
+              PATCH=0
+              ;;
+            patch)
+              PATCH=$((PATCH + 1))
+              ;;
+          esac
+          
+          NEW_VERSION="v${MAJOR}.${MINOR}.${PATCH}"
+          echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "New version: $NEW_VERSION (${BUMP_TYPE} bump from $LATEST_TAG)"
+      
+      - name: Check if tag already exists
+        id: check_tag
+        run: |
+          NEW_VERSION="${{ steps.new_version.outputs.new_version }}"
+          if git rev-parse "$NEW_VERSION" >/dev/null 2>&1; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "⚠️  Tag $NEW_VERSION already exists"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "✅ Tag $NEW_VERSION does not exist"
+          fi
+      
+      - name: Create and push tag
+        id: create_tag
+        if: steps.check_tag.outputs.exists == 'false'
+        run: |
+          NEW_VERSION="${{ steps.new_version.outputs.new_version }}"
+          BUMP_TYPE="${{ steps.version_bump.outputs.bump_type }}"
+          PR_NUMBER="${{ github.event.pull_request.number }}"
+          PR_TITLE="${{ github.event.pull_request.title }}"
+          
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # Create annotated tag with PR information
+          git tag -a "$NEW_VERSION" -m "Release $NEW_VERSION (${BUMP_TYPE} bump) - PR #${PR_NUMBER}: ${PR_TITLE}"
+          
+          git push origin "$NEW_VERSION"
+          
+          echo "✅ Created and pushed tag: $NEW_VERSION"
+      
+      - name: Comment on PR (tag created)
+        if: steps.check_tag.outputs.exists == 'false'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const newVersion = '${{ steps.new_version.outputs.new_version }}';
+            const bumpType = '${{ steps.version_bump.outputs.bump_type }}';
+            
+            github.rest.issues.createComment({
+              issue_number: context.payload.pull_request.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `🏷️ **Tag ${newVersion}** created successfully!\n\n- Version bump: ${bumpType}\n- Build and publish workflow will be triggered automatically`
+            });
+      
+      - name: Comment on PR (tag already exists)
+        if: steps.check_tag.outputs.exists == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const newVersion = '${{ steps.new_version.outputs.new_version }}';
+            
+            github.rest.issues.createComment({
+              issue_number: context.payload.pull_request.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `⏭️ **Tag ${newVersion}** already exists - skipping tag creation.\n\nYou can manually trigger the build workflow if needed.`
+            });
+
+# Made with Bob

@@ -40,11 +40,11 @@ uv sync --extra dev
 ### Automated Release Workflow (PRs to main only)
 1. Developer adds exactly ONE version label to PR targeting `main`: `version:patch`, `version:minor`, or `version:major`
 2. `validate-version-label.yml` ensures exactly one version label exists (blocks merge if missing/multiple)
-3. When PR is merged to `main`, `tag-and-release.yml` workflow runs with two separate jobs:
-   - **Job 1: create-tag** - Reads the label, calculates new version, and creates git tag
-   - **Job 2: build-and-publish** - Builds packages, publishes to PyPI, and creates GitHub Release
-4. The workflow is idempotent: if a tag already exists, only the build-and-publish job runs
-5. Manual reruns are supported via workflow_dispatch with a tag parameter (e.g., `v1.0.0`)
+3. When PR is merged to `main`, two separate workflows are triggered:
+   - **Workflow 1: `create-tag.yml`** - Reads the label, calculates new version, and creates git tag
+   - **Workflow 2: `build-and-publish.yml`** - Triggered by tag creation, builds packages, publishes to PyPI, and creates GitHub Release
+4. The workflows are idempotent: if a tag already exists, tag creation is skipped
+5. Manual builds are supported via workflow_dispatch on `build-and-publish.yml` with a tag parameter (e.g., `v1.0.0`)
 
 ### Version Labels (Required on PRs to main only)
 - **`version:patch`** - Bug fixes (v0.1.0 → v0.1.1)
