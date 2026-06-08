@@ -3,15 +3,15 @@
 # Build targets
 build-core:
 	@echo "Building core package..."
-	cd packages/core && uv build
+	cd packages/core && uv build --out-dir dist
 
 build-docling-serve:
 	@echo "Building docling-serve package..."
-	cd packages/docling_serve && uv build
+	cd packages/docling_serve && uv build --out-dir dist
 
 build-local:
 	@echo "Building local package..."
-	cd packages/local && uv build
+	cd packages/local && uv build --out-dir dist
 
 build-all: build-core build-docling-serve build-local
 	@echo "All packages built successfully!"
