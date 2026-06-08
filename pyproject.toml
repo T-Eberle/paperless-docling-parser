@@ -2,6 +2,10 @@
 # This file is NOT used for building packages - each package in packages/ has its own pyproject.toml
 # This file only provides workspace-level configuration for development
 
+[build-system]
+requires = ["hatchling>=1.24"]
+build-backend = "hatchling.build"
+
 [tool.uv.sources]
 pgx-docling-parser-core = { path = "packages/core", editable = true }
 pgx-docling-parser-local = { path = "packages/local", editable = true }
