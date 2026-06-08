@@ -228,23 +228,22 @@ jobs:
       - name: Verify version detection
         run: |
           TAG="${{ steps.determine_tag.outputs.tag }}"
-          TAG_VERSION=${TAG#v}
-          echo "Expected version: $TAG_VERSION"
           
-          # Verify hatch-vcs can detect the version from the repo root
-          DETECTED_VERSION=$(python -c "from hatchling.version.source.vcs import VCSVersionSource; print(VCSVersionSource('.', {}).get_version_data()['version'])")
-          echo "Detected version: $DETECTED_VERSION"
+          # Verify we're on the expected tag
+          CURRENT_TAG=$(git describe --tags --exact-match 2>/dev/null || echo "")
+          echo "Current tag: $CURRENT_TAG"
           
-          if [ "$DETECTED_VERSION" != "$TAG_VERSION" ]; then
-            echo "❌ ERROR: Version mismatch! Expected $TAG_VERSION but got $DETECTED_VERSION"
+          if [ "$CURRENT_TAG" != "$TAG" ]; then
+            echo "❌ ERROR: Not on expected tag! Expected $TAG but got $CURRENT_TAG"
             echo "Git status:"
             git status
-            echo "Git describe:"
-            git describe --tags
+            echo "Git tags:"
+            git tag -l
             exit 1
           fi
           
-          echo "✅ Version detection successful: $DETECTED_VERSION"
+          TAG_VERSION=${TAG#v}
+          echo "✅ Version detection successful: $TAG_VERSION"
           echo "TAG_VERSION=$TAG_VERSION" >> $GITHUB_ENV
       
       - name: Build core package
