@@ -116,17 +116,11 @@ jobs:
             echo "exists=false" >> $GITHUB_OUTPUT
             echo "✅ Tag $NEW_VERSION does not exist"
           fi
-      - name: Generate GitHub App token
-        id: app-token
-        uses: actions/create-github-app-token@v2
-        with:
-          app-id: ${{ secrets.BOT_APP_ID }}
-          private-key: ${{ secrets.BOT_PRIVATE_KEY }}
       - name: Create and push tag
         id: create_tag
         if: steps.check_tag.outputs.exists == 'false'
         env:
-          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           NEW_VERSION="${{ steps.new_version.outputs.new_version }}"
           BUMP_TYPE="${{ steps.version_bump.outputs.bump_type }}"
