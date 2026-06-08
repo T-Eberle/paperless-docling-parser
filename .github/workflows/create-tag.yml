@@ -144,6 +144,22 @@ jobs:
           git push origin "$NEW_VERSION"
           
           echo "✅ Created and pushed tag: $NEW_VERSION"
+          echo "tag_created=true" >> $GITHUB_OUTPUT
+      
+      - name: Trigger build and publish workflow
+        if: steps.check_tag.outputs.exists == 'false' && steps.create_tag.outputs.tag_created == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          NEW_VERSION="${{ steps.new_version.outputs.new_version }}"
+          
+          echo "Triggering build-and-publish workflow for tag $NEW_VERSION..."
+          
+          gh workflow run build-and-publish.yml \
+            --ref main \
+            -f tag="$NEW_VERSION"
+          
+          echo "✅ Build workflow triggered successfully"
       
       - name: Comment on PR (tag created)
         if: steps.check_tag.outputs.exists == 'false'
