@@ -37,9 +37,6 @@ dependencies = [
 Homepage = "https://github.com/T-Eberle/paperless-docling-parser"
 Issues = "https://github.com/T-Eberle/paperless-docling-parser/issues"
 
-[project.entry-points."paperless_ngx.parsers"]
-docling = "pgx_docling.parsers:DoclingParser"
-
 [tool.hatch.build.targets.wheel]
 packages = ["src/pgx_docling"]
 

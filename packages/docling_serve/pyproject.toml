@@ -20,6 +20,9 @@ dependencies = [
     "tenacity>=8.2.0",
 ]
 
+[project.entry-points."paperless_ngx.parsers"]
+docling = "pgx_docling_serve.parsers:DoclingRemoteParser"
+
 [tool.uv.sources]
 pgx-docling-parser-core = { path = "../core", editable = true }
 
