@@ -152,7 +152,7 @@ jobs:
           echo "created=false" >> $GITHUB_OUTPUT
           echo "⏭️  Skipping tag creation - tag already exists"
       
-      - name: Comment on PR
+      - name: Comment on PR (tag created)
         if: steps.create_tag.outputs.created == 'true'
         uses: actions/github-script@v7
         with:
@@ -165,6 +165,20 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               body: `🏷️ **Tag ${newVersion}** created successfully!\n\n- Version bump: ${bumpType}\n- Build and publish job will run automatically`
+            });
+      
+      - name: Comment on PR (tag already exists)
+        if: steps.check_tag.outputs.exists == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const newVersion = '${{ steps.new_version.outputs.new_version }}';
+            
+            github.rest.issues.createComment({
+              issue_number: context.payload.pull_request.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `⏭️ **Tag ${newVersion}** already exists - skipping tag creation.\n\nThe build and publish job will still run to ensure packages are published.`
             });
   
   build-and-publish:
@@ -189,10 +203,60 @@ jobs:
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             TAG="${{ inputs.tag }}"
             echo "Building from manual dispatch: $TAG"
-          else
+          elif [ -n "${{ needs.create-tag.outputs.new_version }}" ]; then
             TAG="${{ needs.create-tag.outputs.new_version }}"
             echo "Building from newly created tag: $TAG"
+          else
+            # Tag already existed (create-tag was skipped), calculate from PR labels
+            echo "Tag creation was skipped - calculating version from PR labels"
+            
+            # Get latest tag
+            git fetch --tags
+            LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+            echo "Latest tag: $LATEST_TAG"
+            
+            # Extract version bump type from PR labels
+            PR_LABELS='${{ toJson(github.event.pull_request.labels.*.name) }}'
+            if echo "$PR_LABELS" | grep -q "version:major"; then
+              BUMP_TYPE="major"
+            elif echo "$PR_LABELS" | grep -q "version:minor"; then
+              BUMP_TYPE="minor"
+            elif echo "$PR_LABELS" | grep -q "version:patch"; then
+              BUMP_TYPE="patch"
+            else
+              echo "❌ ERROR: No version label found"
+              exit 1
+            fi
+            echo "Bump type: $BUMP_TYPE"
+            
+            # Calculate new version
+            VERSION=${LATEST_TAG#v}
+            IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
+            
+            case $BUMP_TYPE in
+              major)
+                MAJOR=$((MAJOR + 1))
+                MINOR=0
+                PATCH=0
+                ;;
+              minor)
+                MINOR=$((MINOR + 1))
+                PATCH=0
+                ;;
+              patch)
+                PATCH=$((PATCH + 1))
+                ;;
+            esac
+            
+            TAG="v${MAJOR}.${MINOR}.${PATCH}"
+            echo "Calculated tag: $TAG"
           fi
+          
+          if [ -z "$TAG" ]; then
+            echo "❌ ERROR: Failed to determine tag"
+            exit 1
+          fi
+          
           echo "tag=$TAG" >> $GITHUB_OUTPUT
       
       - name: Checkout code
