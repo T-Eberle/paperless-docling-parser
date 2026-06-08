@@ -12,6 +12,8 @@ jobs:
     # Only run on PR merge
     if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
+    environment:
+      name: production
     permissions:
       contents: write
       pull-requests: write
@@ -118,6 +120,8 @@ jobs:
       - name: Create and push tag
         id: create_tag
         if: steps.check_tag.outputs.exists == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.PAT_TAG_PUSH }} 
         run: |
           NEW_VERSION="${{ steps.new_version.outputs.new_version }}"
           BUMP_TYPE="${{ steps.version_bump.outputs.bump_type }}"
@@ -126,6 +130,8 @@ jobs:
           
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git remote set-url origin https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}
           
           # Create annotated tag with PR information
           git tag -a "$NEW_VERSION" -m "Release $NEW_VERSION (${BUMP_TYPE} bump) - PR #${PR_NUMBER}: ${PR_TITLE}"
