@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING
 from docling_core.types.doc.document import DoclingDocument
 
 from pgx_docling.base import BaseDoclingConverter
+from pgx_docling import __version__
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -52,7 +53,7 @@ def _date_to_datetime(d: datetime.date | None) -> datetime.datetime | None:
 
 class DoclingParser:
     name = "Docling Parser"
-    version = "0.1.0"
+    version = __version__
     author = "Thomas Eberle"
     url = "https://github.com/T-Eberle/paperless-docling-parser/issues"
 
