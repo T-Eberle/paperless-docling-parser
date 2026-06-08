@@ -127,9 +127,7 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           
           # Create annotated tag with PR information
-          git tag -a "$NEW_VERSION" -m "Release $NEW_VERSION (${BUMP_TYPE} bump)
-
-PR #${PR_NUMBER}: ${PR_TITLE}"
+          git tag -a "$NEW_VERSION" -m "Release $NEW_VERSION (${BUMP_TYPE} bump) - PR #${PR_NUMBER}: ${PR_TITLE}"
           
           git push origin "$NEW_VERSION"
           
