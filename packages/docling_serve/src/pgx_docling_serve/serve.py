@@ -6,7 +6,7 @@ from typing import Dict, Any
 import httpx
 from docling_core.types.doc.document import DoclingDocument
 
-from core import BaseDoclingConverter, get_pdf_conversion_mode
+from pgx_docling import BaseDoclingConverter, get_pdf_conversion_mode
 
 # Configure logging
 logger = logging.getLogger(__name__)

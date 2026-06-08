@@ -12,6 +12,8 @@ from typing import TYPE_CHECKING
 
 from docling_core.types.doc.document import DoclingDocument
 
+from pgx_docling.base import BaseDoclingConverter
+
 # Configure logging
 logger = logging.getLogger(__name__)
 
@@ -79,12 +81,14 @@ class DoclingParser:
         return False
 
 
-    def __init__(self, logging_group: object = None) -> None:
+    def __init__(self, logging_group: object = None, converter: BaseDoclingConverter | None = None) -> None:
         logger.info("Initializing DoclingParser")
         self._tempdir = _make_tempdir()
         self._text: str | None = None
         self._archive_path: Path | None = None
-        self.converter = DoclingRemoteConverter()
+        if converter is None:
+            raise ValueError("converter parameter is required")
+        self.converter = converter
         logger.debug(f"DoclingParser initialized with temp directory: {self._tempdir}")
 
     def __enter__(self) -> Self:

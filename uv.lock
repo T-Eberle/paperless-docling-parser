@@ -624,6 +624,7 @@ wheels = [
 
 [[package]]
 name = "paperless-docling-parser"
+version = "0.0.0"
 source = { editable = "." }
 dependencies = [
     { name = "docling-core" },
@@ -659,7 +660,7 @@ requires-dist = [
     { name = "reportlab", marker = "extra == 'dev'", specifier = ">=4.0.0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.1.0" },
 ]
-provides-extras = ["dev", "docling-serve", "local"]
+provides-extras = ["local", "docling-serve", "dev"]
 
 [[package]]
 name = "pathspec"
@@ -672,6 +673,7 @@ wheels = [
 
 [[package]]
 name = "pgx-docling-parser-core"
+version = "0.0.0"
 source = { editable = "packages/core" }
 dependencies = [
     { name = "docling-core" },
@@ -682,6 +684,7 @@ requires-dist = [{ name = "docling-core", specifier = ">=2.0.0" }]
 
 [[package]]
 name = "pgx-docling-parser-local"
+version = "0.0.0"
 source = { editable = "packages/local" }
 dependencies = [
     { name = "pgx-docling-parser-core" },
@@ -692,6 +695,7 @@ requires-dist = [{ name = "pgx-docling-parser-core" }]
 
 [[package]]
 name = "pgx-docling-parser-serve"
+version = "0.0.0"
 source = { editable = "packages/docling_serve" }
 dependencies = [
     { name = "httpx" },

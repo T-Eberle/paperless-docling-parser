@@ -1,3 +1,7 @@
+# Workspace configuration for paperless-docling-parser monorepo
+# This file is NOT used for building packages - each package in packages/ has its own pyproject.toml
+# This file only provides workspace-level configuration for development
+
 [build-system]
 requires = ["hatchling>=1.24"]
 build-backend = "hatchling.build"
@@ -8,46 +12,12 @@ pgx-docling-parser-local = { path = "packages/local", editable = true }
 pgx-docling-parser-serve = { path = "packages/docling_serve", editable = true }
 
 [project]
-name = "paperless-docling-parser"
+name = "paperless-docling-parser-workspace"
 version = "0.0.0"
-description = "Paperless-ngx docling parser plugin: Parses several types of document files (pdf) inside paperless ngx."
-readme = "README.md"
+description = "Workspace configuration for paperless-docling-parser monorepo"
 requires-python = ">=3.10,<3.14"
-license = "MIT"
-authors = [
-  { name = "T-Eberle" },
-]
-keywords = ["paperless", "paperless-ngx", "docling", "pdf"]
-classifiers = [
-  "Development Status :: 4 - Beta",
-  "Framework :: Django",
-  "Intended Audience :: System Administrators",
-  "License :: OSI Approved :: MIT License",
-  "Operating System :: POSIX :: Linux",
-  "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3.12",
-  "Topic :: Communications :: Email",
-  "Topic :: Office/Business",
-]
-
-# Base dependencies - common to all variants
-dependencies = [
-    "pymupdf>=1.23.0",
-    "docling-core>=2.0.0",
-    "Pillow>=10.0.0",
-]
 
 [project.optional-dependencies]
-# Local converter variant (for local development)
-local = [
-    "pgx-docling-parser-local",
-]
-
-# Docling-serve remote converter variant
-docling-serve = [
-    "pgx-docling-parser-serve",
-]
-
 # Development dependencies
 dev = [
     "pytest>=7.0",
@@ -57,16 +27,14 @@ dev = [
     "ruff>=0.1.0",
 ]
 
-[project.urls]
-Homepage = "https://github.com/T-Eberle/paperless-docling-parser"
-Issues = "https://github.com/T-Eberle/paperless-docling-parser/issues"
+# Optional package variants
+local = [
+    "pgx-docling-parser-local",
+]
 
-
-[project.entry-points."paperless_ngx.parsers"]
-docling = "paperless_ngx_docling.parsers:DoclingParser"
-
-[tool.hatch.build.targets.wheel]
-packages = ["src/paperless_ngx_docling"]
+docling-serve = [
+    "pgx-docling-parser-serve",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
