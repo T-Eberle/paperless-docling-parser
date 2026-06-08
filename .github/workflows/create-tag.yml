@@ -17,6 +17,7 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
+      actions: write  # Required to trigger other workflows
     
     steps:
       - name: Checkout code
