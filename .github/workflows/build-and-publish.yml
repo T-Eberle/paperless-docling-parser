@@ -1,0 +1,164 @@
+name: Build and Publish to PyPI
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to build and publish (e.g., v1.0.0)'
+        required: true
+        type: string
+
+jobs:
+  build-and-publish:
+    name: Build and publish packages to PyPI
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://pypi.org/project/pgx-docling-parser-serve/
+    permissions:
+      contents: write
+      id-token: write  # For trusted publishing to PyPI (optional)
+    
+    steps:
+      - name: Determine tag to build
+        id: determine_tag
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            # Manual dispatch: use provided tag
+            TAG="${{ inputs.tag }}"
+            echo "Building from manual dispatch: $TAG"
+          else
+            # Tag push: use the pushed tag
+            TAG="${GITHUB_REF#refs/tags/}"
+            echo "Building from tag push: $TAG"
+          fi
+          
+          if [ -z "$TAG" ]; then
+            echo "❌ ERROR: Failed to determine tag"
+            exit 1
+          fi
+          
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+      
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history needed for version calculation
+          ref: ${{ steps.determine_tag.outputs.tag }}
+      
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      
+      - name: Verify version detection
+        run: |
+          TAG="${{ steps.determine_tag.outputs.tag }}"
+          
+          # Verify we're on the expected tag
+          CURRENT_TAG=$(git describe --tags --exact-match 2>/dev/null || echo "")
+          echo "Current tag: $CURRENT_TAG"
+          
+          if [ "$CURRENT_TAG" != "$TAG" ]; then
+            echo "❌ ERROR: Not on expected tag! Expected $TAG but got $CURRENT_TAG"
+            echo "Git status:"
+            git status
+            echo "Git tags:"
+            git tag -l
+            exit 1
+          fi
+          
+          TAG_VERSION=${TAG#v}
+          echo "✅ Version detection successful: $TAG_VERSION"
+          echo "TAG_VERSION=$TAG_VERSION" >> $GITHUB_ENV
+      
+      - name: Build core package
+        run: |
+          cd packages/core
+          
+          echo "Setting version to $TAG_VERSION..."
+          uv version "$TAG_VERSION"
+          
+          echo "Building core package..."
+          uv build
+          
+          # Verify the built version
+          WHEEL_FILE=$(ls dist/*.whl | head -n 1)
+          echo "Built wheel: $WHEEL_FILE"
+          if [[ "$WHEEL_FILE" == *"0.0.0"* ]]; then
+            echo "❌ ERROR: Built package still has placeholder version!"
+            echo "Wheel filename: $WHEEL_FILE"
+            exit 1
+          fi
+          
+          echo "✅ Core package built successfully with version $TAG_VERSION"
+      
+      - name: Build docling-serve package
+        run: |
+          cd packages/docling_serve
+          
+          echo "Setting version to $TAG_VERSION..."
+          uv version "$TAG_VERSION"
+          
+          echo "Building docling-serve package..."
+          uv build
+          
+          # Verify the built version
+          WHEEL_FILE=$(ls dist/*.whl | head -n 1)
+          echo "Built wheel: $WHEEL_FILE"
+          if [[ "$WHEEL_FILE" == *"0.0.0"* ]]; then
+            echo "❌ ERROR: Built package still has placeholder version!"
+            echo "Wheel filename: $WHEEL_FILE"
+            exit 1
+          fi
+          
+          echo "✅ Docling-serve package built successfully with version $TAG_VERSION"
+      # Not implemented yet.
+      #- name: Build local package
+      #  run: |
+      #    cd packages/local
+      #    uv build
+      
+      - name: Publish core package to PyPI
+        env:
+          UV_PUBLISH_TOKEN: ${{ secrets.PYPI_TOKEN }}
+        run: |
+          cd packages/core
+          uv publish
+      
+      - name: Publish docling-serve package to PyPI
+        env:
+          UV_PUBLISH_TOKEN: ${{ secrets.PYPI_TOKEN }}
+        run: |
+          cd packages/docling_serve
+          uv publish
+      # Not implemented yet.
+      #- name: Publish local package to PyPI
+      #  env:
+      #    UV_PUBLISH_TOKEN: ${{ secrets.PYPI_TOKEN }}
+      #  run: |
+      #    cd packages/local
+      #    uv publish
+      
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.determine_tag.outputs.tag }}
+          files: |
+            packages/core/dist/*
+            packages/docling_serve/dist/*
+#            Not implemented yet.
+#            packages/local/dist/*
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+
+# Made with Bob
