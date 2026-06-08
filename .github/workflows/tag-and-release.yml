@@ -186,6 +186,7 @@ jobs:
       url: https://pypi.org/project/pgx-docling-parser-serve/
     permissions:
       contents: write
+      pull-requests: write  # For commenting on PRs
       id-token: write  # For trusted publishing to PyPI (optional)
     
     steps:
@@ -245,16 +246,54 @@ jobs:
           TAG_VERSION=${TAG#v}
           echo "✅ Version detection successful: $TAG_VERSION"
           echo "TAG_VERSION=$TAG_VERSION" >> $GITHUB_ENV
+          
+          # Debug git state for hatch-vcs
+          echo "Git describe output: $(git describe --tags --long --dirty)"
+          echo "Git HEAD: $(git rev-parse HEAD)"
+          echo "Git tag list:"
+          git tag -l --contains HEAD
       
       - name: Build core package
         run: |
           cd packages/core
+          
+          # Set version explicitly for hatch-vcs via environment
+          export HATCH_BUILD_HOOK_ENABLE_VCS=true
+          
+          echo "Building core package with version $TAG_VERSION..."
           uv build
+          
+          # Verify the built version
+          WHEEL_FILE=$(ls dist/*.whl | head -n 1)
+          echo "Built wheel: $WHEEL_FILE"
+          if [[ "$WHEEL_FILE" == *"0.0.0.dev0"* ]]; then
+            echo "❌ ERROR: Built package still has fallback version!"
+            echo "Wheel filename: $WHEEL_FILE"
+            exit 1
+          fi
+          
+          echo "✅ Core package built successfully with correct version"
       
       - name: Build docling-serve package
         run: |
           cd packages/docling_serve
+          
+          # Set version explicitly for hatch-vcs via environment
+          export HATCH_BUILD_HOOK_ENABLE_VCS=true
+          
+          echo "Building docling-serve package with version $TAG_VERSION..."
           uv build
+          
+          # Verify the built version
+          WHEEL_FILE=$(ls dist/*.whl | head -n 1)
+          echo "Built wheel: $WHEEL_FILE"
+          if [[ "$WHEEL_FILE" == *"0.0.0.dev0"* ]]; then
+            echo "❌ ERROR: Built package still has fallback version!"
+            echo "Wheel filename: $WHEEL_FILE"
+            exit 1
+          fi
+          
+          echo "✅ Docling-serve package built successfully with correct version"
       # Not implemented yet.
       #- name: Build local package
       #  run: |
@@ -299,15 +338,22 @@ jobs:
         if: github.event_name == 'pull_request'
         uses: actions/github-script@v7
         with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const tag = '${{ steps.determine_tag.outputs.tag }}';
             const bumpType = '${{ needs.create-tag.outputs.bump_type }}';
             
-            github.rest.issues.createComment({
-              issue_number: context.payload.pull_request.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: `🚀 **Release ${tag}** published successfully!\n\n- Packages published to PyPI\n- GitHub Release created`
-            });
+            try {
+              await github.rest.issues.createComment({
+                issue_number: context.payload.pull_request.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: `🚀 **Release ${tag}** published successfully!\n\n- Packages published to PyPI\n- GitHub Release created`
+              });
+            } catch (error) {
+              // PR is already closed/merged, so we can't comment
+              // This is expected behavior - log but don't fail
+              console.log('Could not comment on PR (likely already closed):', error.message);
+            }
 
 # Made with Bob
