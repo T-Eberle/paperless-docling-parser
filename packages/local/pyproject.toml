@@ -1,15 +1,10 @@
 [build-system]
-requires = ["hatchling>=1.24", "hatch-vcs>=0.3.0"]
+requires = ["hatchling>=1.24"]
 build-backend = "hatchling.build"
-
-[tool.hatch.version]
-source = "vcs"
-root = "../.."
-fallback-version = "0.0.0.dev0"
 
 [project]
 name = "pgx-docling-parser-local"
-dynamic = ["version"]
+version = "0.0.0"
 description = "Local converter for pgx-docling-parser (for local development)"
 readme = "README.md"
 requires-python = ">=3.10,<3.14"
