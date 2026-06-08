@@ -26,14 +26,13 @@ dev = [
     "black>=23.0",
     "ruff>=0.1.0",
 ]
+[tool.uv]
+package = false
 
-# Optional package variants
-local = [
-    "pgx-docling-parser-local",
-]
-
-docling-serve = [
-    "pgx-docling-parser-serve",
+[tool.uv.workspace]
+members = [
+  "packages/docling_serve",
+  "packages/core",
 ]
 
 [tool.pytest.ini_options]
