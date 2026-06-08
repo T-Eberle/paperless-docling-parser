@@ -172,8 +172,8 @@ jobs:
     # Run after tag creation OR on manual dispatch
     needs: [create-tag]
     if: |
-      always() &&
-      (github.event_name == 'workflow_dispatch' || needs.create-tag.result == 'success')
+      !cancelled() &&
+      (github.event_name == 'workflow_dispatch' || (needs.create-tag.result == 'success' || needs.create-tag.result == 'skipped'))
     runs-on: ubuntu-latest
     environment:
       name: production
