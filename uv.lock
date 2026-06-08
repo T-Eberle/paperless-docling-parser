@@ -624,7 +624,6 @@ wheels = [
 
 [[package]]
 name = "paperless-docling-parser"
-version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "docling-core" },
@@ -641,18 +640,18 @@ dev = [
     { name = "ruff" },
 ]
 docling-serve = [
-    { name = "paperless-docling-parser-docling-serve" },
+    { name = "pgx-docling-parser-serve" },
 ]
 local = [
-    { name = "paperless-docling-parser-local" },
+    { name = "pgx-docling-parser-local" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "black", marker = "extra == 'dev'", specifier = ">=23.0" },
     { name = "docling-core", specifier = ">=2.0.0" },
-    { name = "paperless-docling-parser-docling-serve", marker = "extra == 'docling-serve'", editable = "packages/docling_serve" },
-    { name = "paperless-docling-parser-local", marker = "extra == 'local'", editable = "packages/local" },
+    { name = "pgx-docling-parser-local", marker = "extra == 'local'", editable = "packages/local" },
+    { name = "pgx-docling-parser-serve", marker = "extra == 'docling-serve'", editable = "packages/docling_serve" },
     { name = "pillow", specifier = ">=10.0.0" },
     { name = "pymupdf", specifier = ">=1.23.0" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.0" },
@@ -660,11 +659,19 @@ requires-dist = [
     { name = "reportlab", marker = "extra == 'dev'", specifier = ">=4.0.0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.1.0" },
 ]
-provides-extras = ["local", "docling-serve", "dev"]
+provides-extras = ["dev", "docling-serve", "local"]
 
 [[package]]
-name = "paperless-docling-parser-core"
-version = "0.1.0"
+name = "pathspec"
+version = "1.1.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/5a/82/42f767fc1c1143d6fd36efb827202a2d997a375e160a71eb2888a925aac1/pathspec-1.1.1.tar.gz", hash = "sha256:17db5ecd524104a120e173814c90367a96a98d07c45b2e10c2f3919fff91bf5a", size = 135180, upload-time = "2026-04-27T01:46:08.907Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/f1/d9/7fb5aa316bc299258e68c73ba3bddbc499654a07f151cba08f6153988714/pathspec-1.1.1-py3-none-any.whl", hash = "sha256:a00ce642f577bf7f473932318056212bc4f8bfdf53128c78bbd5af0b9b20b189", size = 57328, upload-time = "2026-04-27T01:46:07.06Z" },
+]
+
+[[package]]
+name = "pgx-docling-parser-core"
 source = { editable = "packages/core" }
 dependencies = [
     { name = "docling-core" },
@@ -674,40 +681,29 @@ dependencies = [
 requires-dist = [{ name = "docling-core", specifier = ">=2.0.0" }]
 
 [[package]]
-name = "paperless-docling-parser-docling-serve"
-version = "0.1.0"
+name = "pgx-docling-parser-local"
+source = { editable = "packages/local" }
+dependencies = [
+    { name = "pgx-docling-parser-core" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "pgx-docling-parser-core" }]
+
+[[package]]
+name = "pgx-docling-parser-serve"
 source = { editable = "packages/docling_serve" }
 dependencies = [
     { name = "httpx" },
-    { name = "paperless-docling-parser-core" },
+    { name = "pgx-docling-parser-core" },
     { name = "tenacity" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "httpx", specifier = ">=0.27.0" },
-    { name = "paperless-docling-parser-core", editable = "packages/core" },
+    { name = "pgx-docling-parser-core", editable = "packages/core" },
     { name = "tenacity", specifier = ">=8.2.0" },
-]
-
-[[package]]
-name = "paperless-docling-parser-local"
-version = "0.1.0"
-source = { editable = "packages/local" }
-dependencies = [
-    { name = "paperless-docling-parser-core" },
-]
-
-[package.metadata]
-requires-dist = [{ name = "paperless-docling-parser-core", specifier = "==0.1.0" }]
-
-[[package]]
-name = "pathspec"
-version = "1.1.1"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/5a/82/42f767fc1c1143d6fd36efb827202a2d997a375e160a71eb2888a925aac1/pathspec-1.1.1.tar.gz", hash = "sha256:17db5ecd524104a120e173814c90367a96a98d07c45b2e10c2f3919fff91bf5a", size = 135180, upload-time = "2026-04-27T01:46:08.907Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/f1/d9/7fb5aa316bc299258e68c73ba3bddbc499654a07f151cba08f6153988714/pathspec-1.1.1-py3-none-any.whl", hash = "sha256:a00ce642f577bf7f473932318056212bc4f8bfdf53128c78bbd5af0b9b20b189", size = 57328, upload-time = "2026-04-27T01:46:07.06Z" },
 ]
 
 [[package]]

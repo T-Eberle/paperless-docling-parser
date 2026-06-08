@@ -47,7 +47,8 @@ class TestDoclingConverter:
         assert converter is not None
         assert converter.base_url is not None
         assert converter.timeout > 0
-        assert converter.max_retries > 0
+        assert converter.poll_max_attempts > 0
+        assert converter.poll_interval > 0
         assert isinstance(converter.pdf_conversion_mode, PdfConversionMode)
     
     def test_environment_variables(self):

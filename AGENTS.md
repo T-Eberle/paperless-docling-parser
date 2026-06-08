@@ -65,19 +65,22 @@ uv sync --extra dev
 - Parser in `src/paperless_ngx_docling/parsers.py` dynamically imports converter based on installed extras
 
 ### Async-to-Sync Wrapper Pattern
-- `DoclingRemoteConverter.convert_async()` is the core async method
+- `DoclingRemoteConverter.convert_async()` is the core async method containing the full 3-step workflow
 - `_convert()` wraps it with `asyncio.run()` for synchronous usage
 - Base class `convert()` method routes to mode-specific methods (easyocr/tesseract/granite_docling)
 
-### Docling-Serve API Workflow (Non-Standard)
+### Docling-Serve API Workflow
+The entire workflow is contained in a single `convert_async()` method:
 1. POST to `/v1/convert/file/async` returns `task_id`
 2. Poll `/v1/status/poll/{task_id}` until status is "success" or "failure"
 3. GET `/v1/result/{task_id}` to fetch final result
-4. Extract `result["document"]["json_content"]` and convert to `DoclingDocument` via `model_validate()`
+4. Extract and validate using `_extract_docling_document()` helper method
 
 ### Environment Variable Configuration
 - All config uses `PAPERLESS_DOCLING_*` prefix (not just `DOCLING_*`)
 - `PAPERLESS_DOCLING_PDF_CONVERSION_MODE` must be lowercase enum value: "easyocr", "tesseract", or "granite_docling"
+- `PAPERLESS_DOCLING_POLL_MAX_ATTEMPTS` controls maximum polling attempts (default: 60)
+- `PAPERLESS_DOCLING_POLL_INTERVAL` controls polling interval in seconds (default: 5.0)
 - Defaults are in `packages/docling_serve/src/docling_serve/serve.py` (not in pyproject.toml)
 
 ### Temp Directory Handling
