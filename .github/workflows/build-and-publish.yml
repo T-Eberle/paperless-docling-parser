@@ -104,14 +104,14 @@ jobs:
         run: |
           cd packages/core
           echo "Building core package..."
-          uv build
+          uv build --out-dir dist
           echo "✅ Core package built successfully"
       
       - name: Build docling-serve package
         run: |
           cd packages/docling_serve
           echo "Building docling-serve package..."
-          uv build
+          uv build --out-dir dist
           echo "✅ Docling-serve package built successfully"
       # Not implemented yet.
       #- name: Build local package
