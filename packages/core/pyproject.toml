@@ -1,5 +1,5 @@
 [build-system]
-requires = ["hatchling>=1.24"]
+requires = ["hatchling>=1.24", "hatch-vcs>=0.3.0"]
 build-backend = "hatchling.build"
 
 [project]
@@ -21,11 +21,12 @@ dependencies = [
 [tool.hatch.build.targets.wheel]
 packages = ["src/core"]
 
+[tool.hatch.version]
+source = "vcs"
+root = "../.."
+fallback-version = "0.0.0.dev0"
+
 [tool.hatch.build.targets.sdist]
 include = [
     "src/",
-    "../../VERSION",
 ]
-[tool.hatch.version]
-path = "../../VERSION"
-pattern = "(?P<version>.+)"

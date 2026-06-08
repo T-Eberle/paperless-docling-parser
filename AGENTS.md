@@ -28,7 +28,36 @@ uv sync --extra dev
 ### Monorepo Structure with Editable Installs
 - Root `pyproject.toml` uses `[tool.uv.sources]` to reference packages as editable paths
 - Packages in `packages/` are separate but linked via editable installs
-- Version is stored in root `VERSION` file, referenced by packages via `[tool.hatch.version]`
+- Version is determined by git tags using `hatch-vcs`, not a VERSION file
+
+### Versioning and Release Process
+- Versions are determined by git tags in format `v{MAJOR}.{MINOR}.{PATCH}`
+- All packages (core, docling_serve, local) share the same version from git tags
+- Local development without tags uses `0.0.0.dev0+g{git_hash}` format
+- Version detection uses `hatch-vcs` plugin with `source = "vcs"`
+
+### Automated Release Workflow (PRs to main only)
+1. Developer adds exactly ONE version label to PR targeting `main`: `version:patch`, `version:minor`, or `version:major`
+2. `validate-version-label.yml` ensures exactly one version label exists (blocks merge if missing/multiple)
+3. When PR is merged to `main`, `auto-tag.yml` reads the label and creates appropriate tag
+4. Tag creation triggers `publish-release.yml`
+5. Packages are built, published to PyPI, and GitHub Release is created
+
+### Version Labels (Required on PRs to main only)
+- **`version:patch`** - Bug fixes (v0.1.0 → v0.1.1)
+- **`version:minor`** - New features (v0.1.0 → v0.2.0)
+- **`version:major`** - Breaking changes (v0.1.0 → v1.0.0)
+
+**Important**:
+- Version labels are ONLY required for PRs targeting the `main` branch
+- Exactly ONE version label must be present on every PR to main
+- The validation workflow will fail if zero or multiple version labels are found
+- PRs to other branches (e.g., `dev`) do not require version labels
+
+### Local Development
+- No manual version updates needed
+- Build commands work without tags (uses fallback version)
+- Version is automatically detected from git history
 
 ### Converter Architecture
 - `BaseDoclingConverter` in `packages/core/src/core/base.py` defines abstract methods for 3 conversion modes
@@ -68,6 +97,7 @@ uv sync --extra dev
 - Tests verify `DoclingDocument` structure, not just string output
 
 ### Package Publishing
-- Makefile requires `.env` file with `TESTPYPI_TOKEN` and `PYPI_TOKEN`
-- Build commands must be run from package directories (not root)
-- Packages are published separately: core first, then docling_serve
+- Publishing is automated via GitHub Actions on tag creation
+- Manual publishing: Build commands must be run from package directories (not root)
+- Packages are published separately: core first, then docling_serve, then local
+- GitHub Actions uses `PYPI_TOKEN` secret for authentication

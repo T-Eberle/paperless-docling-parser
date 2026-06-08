@@ -1,5 +1,5 @@
 [build-system]
-requires = ["hatchling>=1.24"]
+requires = ["hatchling>=1.24", "hatch-vcs>=0.3.0"]
 build-backend = "hatchling.build"
 
 [tool.uv.sources]
@@ -9,7 +9,7 @@ paperless-docling-parser-docling-serve = { path = "packages/docling_serve", edit
 
 [project]
 name = "paperless-docling-parser"
-version = "0.1.0"
+dynamic = ["version"]
 description = "Paperless-ngx docling parser plugin: Parses several types of document files (pdf) inside paperless ngx."
 readme = "README.md"
 requires-python = ">=3.10,<3.14"
@@ -40,12 +40,12 @@ dependencies = [
 [project.optional-dependencies]
 # Local converter variant (for local development)
 local = [
-    "paperless-docling-parser-local==0.1.0",
+    "paperless-docling-parser-local",
 ]
 
 # Docling-serve remote converter variant
 docling-serve = [
-    "paperless-docling-parser-docling-serve==0.1.0",
+    "paperless-docling-parser-docling-serve",
 ]
 
 # Development dependencies
@@ -64,6 +64,13 @@ Issues = "https://github.com/T-Eberle/paperless-docling-parser/issues"
 
 [project.entry-points."paperless_ngx.parsers"]
 docling = "paperless_ngx_docling.parsers:DoclingParser"
+
+[tool.hatch.version]
+source = "vcs"
+fallback-version = "0.0.0.dev0"
+
+[tool.hatch.build.hooks.vcs]
+version-file = "src/paperless_ngx_docling/_version.py"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/paperless_ngx_docling"]
