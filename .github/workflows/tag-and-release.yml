@@ -1,4 +1,4 @@
-name: Auto Tag on Main Merge
+name: Auto Tag and Publish Release
 
 on:
   pull_request:
@@ -7,14 +7,18 @@ on:
       - main
 
 jobs:
-  auto-tag:
-    name: Create version tag based on PR labels
+  auto-tag-and-publish:
+    name: Create version tag and publish to PyPI
     # Only run if PR was merged (not just closed)
     if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://pypi.org/project/pgx-docling-parser-serve/
     permissions:
       contents: write
       pull-requests: write
+      id-token: write  # For trusted publishing to PyPI (optional)
     
     steps:
       - name: Checkout code
@@ -133,10 +137,98 @@ jobs:
           
           echo "✅ Created and pushed tag: $NEW_VERSION"
       
+      - name: Fetch new tag
+        if: steps.check_tag.outputs.exists == 'false'
+        run: |
+          NEW_VERSION="${{ steps.new_version.outputs.new_version }}"
+          git fetch origin "$NEW_VERSION"
+          echo "✅ Fetched tag $NEW_VERSION into local repository"
+      
       - name: Skip tagging
         if: steps.check_tag.outputs.exists == 'true'
         run: |
           echo "⏭️  Skipping tag creation - tag already exists"
+      
+      - name: Install uv
+        if: steps.check_tag.outputs.exists == 'false'
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+      
+      - name: Set up Python
+        if: steps.check_tag.outputs.exists == 'false'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      
+      - name: Verify tag version
+        if: steps.check_tag.outputs.exists == 'false'
+        run: |
+          NEW_VERSION="${{ steps.new_version.outputs.new_version }}"
+          TAG_VERSION=${NEW_VERSION#v}
+          echo "Tag version: $TAG_VERSION"
+          echo "TAG_VERSION=$TAG_VERSION" >> $GITHUB_ENV
+      
+      - name: Build core package
+        if: steps.check_tag.outputs.exists == 'false'
+        run: |
+          cd packages/core
+          uv build
+      
+      - name: Build docling-serve package
+        if: steps.check_tag.outputs.exists == 'false'
+        run: |
+          cd packages/docling_serve
+          uv build
+      
+      - name: Build local package
+        if: steps.check_tag.outputs.exists == 'false'
+        run: |
+          cd packages/local
+          uv build
+      
+      - name: Publish core package to PyPI
+        if: steps.check_tag.outputs.exists == 'false'
+        env:
+          UV_PUBLISH_TOKEN: ${{ secrets.PYPI_TOKEN }}
+        run: |
+          cd packages/core
+          uv publish
+      
+      - name: Publish docling-serve package to PyPI
+        if: steps.check_tag.outputs.exists == 'false'
+        env:
+          UV_PUBLISH_TOKEN: ${{ secrets.PYPI_TOKEN }}
+        run: |
+          cd packages/docling_serve
+          uv publish
+      
+      - name: Publish local package to PyPI
+        if: steps.check_tag.outputs.exists == 'false'
+        env:
+          UV_PUBLISH_TOKEN: ${{ secrets.PYPI_TOKEN }}
+        run: |
+          cd packages/local
+          uv publish
+      
+      - name: Ensure tags are up to date for release
+        if: steps.check_tag.outputs.exists == 'false'
+        run: |
+          git fetch --tags
+          echo "✅ Refreshed tags for GitHub Release creation"
+      
+      - name: Create GitHub Release
+        if: steps.check_tag.outputs.exists == 'false'
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.new_version.outputs.new_version }}
+          files: |
+            packages/core/dist/*
+            packages/docling_serve/dist/*
+            packages/local/dist/*
+          generate_release_notes: true
+          draft: false
+          prerelease: false
       
       - name: Comment on PR
         if: steps.check_tag.outputs.exists == 'false'
@@ -150,7 +242,7 @@ jobs:
               issue_number: context.payload.pull_request.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `🚀 **Release ${newVersion}** created (${bumpType} bump)\n\nPackages will be published to PyPI shortly.`
+              body: `🚀 **Release ${newVersion}** published successfully!\n\n- Version bump: ${bumpType}\n- Packages published to PyPI\n- GitHub Release created`
             });
 
 # Made with Bob
