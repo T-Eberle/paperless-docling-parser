@@ -173,7 +173,7 @@ jobs:
     needs: [create-tag]
     if: |
       always() &&
-      (needs.create-tag.result == 'success' || github.event_name == 'workflow_dispatch')
+      (github.event_name == 'workflow_dispatch' || needs.create-tag.result == 'success')
     runs-on: ubuntu-latest
     environment:
       name: production
@@ -217,10 +217,9 @@ jobs:
           TAG_VERSION=${TAG#v}
           echo "Expected version: $TAG_VERSION"
           
-          # Verify hatch-vcs can detect the version in each package
-          cd packages/core
-          DETECTED_VERSION=$(python -c "from hatchling.version.source.vcs import VCSVersionSource; import os; os.chdir('../../'); print(VCSVersionSource('.', {}).get_version_data()['version'])")
-          echo "Core package detected version: $DETECTED_VERSION"
+          # Verify hatch-vcs can detect the version from the repo root
+          DETECTED_VERSION=$(python -c "from hatchling.version.source.vcs import VCSVersionSource; print(VCSVersionSource('.', {}).get_version_data()['version'])")
+          echo "Detected version: $DETECTED_VERSION"
           
           if [ "$DETECTED_VERSION" != "$TAG_VERSION" ]; then
             echo "❌ ERROR: Version mismatch! Expected $TAG_VERSION but got $DETECTED_VERSION"
