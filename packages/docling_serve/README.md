@@ -6,11 +6,13 @@ This package provides a remote document converter that uses the docling-serve AP
 
 ## Installation
 
-This package is automatically installed when you install the main package with the `docling-serve` extra:
+Install this package directly from PyPI:
 
 ```bash
-pip install pgx-docling-parser[docling-serve]
+pip install pgx-docling-parser-serve
 ```
+
+This will automatically install `pgx-docling-parser-core` as a dependency.
 
 ## Configuration
 
