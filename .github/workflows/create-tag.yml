@@ -114,110 +114,112 @@ jobs:
       - name: Install Bob Shell
         run: curl -fsSL https://bob.ibm.com/download/bobshell.sh | bash -s -- --pm npm
       
-      - name: Fetch git commit history
-        id: fetch_commits
-        run: |
-          LATEST_TAG="${{ steps.get_latest_tag.outputs.latest_tag }}"
-          NEW_VERSION="${{ steps.new_version.outputs.new_version }}"
-          
-          echo "Fetching commits from $LATEST_TAG to HEAD..."
-          
-          # Get commit log with format: hash | author | date | subject
-          git log ${LATEST_TAG}..HEAD --pretty=format:"%H|%an|%ad|%s" --date=short > commits.log
-          
-          # Count commits
-          COMMIT_COUNT=$(wc -l < commits.log)
-          echo "Found $COMMIT_COUNT commits since $LATEST_TAG"
-          
-          # Also get full commit messages for context
-          git log ${LATEST_TAG}..HEAD --pretty=format:"## Commit: %h%n**Author:** %an%n**Date:** %ad%n**Subject:** %s%n%n%b%n---" --date=short > commits_full.log
-          
-          echo "commit_count=$COMMIT_COUNT" >> $GITHUB_OUTPUT
-      
-      - name: Generate changelog with Bob
+      - name: Generate changelog and create tag with Bob
+        id: bob_tag
         env:
           BOBSHELL_API_KEY: ${{ secrets.BOBSHELL_API_KEY }}
-        run: |
-          bob --accept-license --auth-method api-key --approval-mode auto_edit -p "$(cat <<'EOF'
-          You are generating a changelog for version ${{ steps.new_version.outputs.new_version }} of the ${{ github.repository }} repository, non-interactively, in CI.
-          
-          Read AGENTS.md first to understand this repo's patterns and constraints.
-          
-          The commit history since the last release (${{ steps.get_latest_tag.outputs.latest_tag }}) is in two files:
-          - commits.log: Contains a summary of all commits (hash|author|date|subject)
-          - commits_full.log: Contains full commit messages with bodies
-          
-          Read both files using the read_file tool.
-          
-          Then use the write_to_file tool to create a file named "changelog.md" with a well-structured changelog in valid Markdown format.
-          
-          The changelog.md file must contain:
-          - A header: "# Release ${{ steps.new_version.outputs.new_version }}"
-          - A subtitle with the release date and type: "*Released on $(date +%Y-%m-%d) - ${{ steps.version_bump.outputs.bump_type }} release*"
-          - A horizontal rule: "---"
-          - A "## 🎯 Summary" section with a 2-3 sentence overview of what changed in this release
-          - A "## ✨ Features" section listing new features (if any)
-          - A "## 🐛 Bug Fixes" section listing bug fixes (if any)
-          - A "## 📚 Documentation" section listing documentation changes (if any)
-          - A "## 🔧 Other Changes" section for other notable changes (if any)
-          - Each item should reference the commit hash in parentheses, e.g., "- Added new feature (abc1234)"
-          
-          Guidelines:
-          - Analyze commit messages to categorize changes appropriately
-          - Look for keywords like "fix", "feat", "docs", "refactor", "test", "chore" in commit messages
-          - Be concise but informative
-          - Skip trivial commits like "fix typo" or "update README" unless they're significant
-          - If a section has no items, omit that section entirely
-          - Focus on user-facing changes and important technical improvements
-          - The changelog should be professional and suitable for a GitHub release
-          
-          The entire changelog must be valid Markdown. Do not include any markers or delimiters.
-          EOF
-          )"
-      
-      - name: Check if tag already exists
-        id: check_tag
-        run: |
-          NEW_VERSION="${{ steps.new_version.outputs.new_version }}"
-          if git rev-parse "$NEW_VERSION" >/dev/null 2>&1; then
-            echo "exists=true" >> $GITHUB_OUTPUT
-            echo "⚠️  Tag $NEW_VERSION already exists"
-          else
-            echo "exists=false" >> $GITHUB_OUTPUT
-            echo "✅ Tag $NEW_VERSION does not exist"
-          fi
-      - name: Create and push tag
-        id: create_tag
-        if: steps.check_tag.outputs.exists == 'false'
-        env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          NEW_VERSION="${{ steps.new_version.outputs.new_version }}"
-          BUMP_TYPE="${{ steps.version_bump.outputs.bump_type }}"
-          PR_NUMBER="${{ github.event.pull_request.number }}"
-          PR_TITLE="${{ github.event.pull_request.title }}"
+          bob --accept-license --auth-method api-key --approval-mode auto_edit -p "$(cat <<'EOF'
+          You are creating a version tag for ${{ steps.new_version.outputs.new_version }} of the ${{ github.repository }} repository, non-interactively, in CI.
           
+          Your task is to:
+          1. Fetch git commit history since the last release (${{ steps.get_latest_tag.outputs.latest_tag }})
+          2. Generate a professional changelog
+          3. Check if the tag already exists
+          4. Create and push the tag with the changelog as the message (if it doesn't exist)
+          
+          ## Step 1: Fetch commit history
+          Use execute_command to run:
+          git log ${{ steps.get_latest_tag.outputs.latest_tag }}..HEAD --pretty=format:"%h|%an|%ad|%s" --date=short
+          
+          This will give you commits in format: short_hash|author|date|subject
+          
+          ## Step 2: Generate changelog
+          Analyze the commit output and create a changelog.md file using write_to_file with this structure:
+          
+          ```markdown
+          # Release ${{ steps.new_version.outputs.new_version }}
+          *Released on $(date +%Y-%m-%d) - ${{ steps.version_bump.outputs.bump_type }} release*
+          
+          ---
+          
+          ## 🎯 Summary
+          [2-3 sentence overview of what changed]
+          
+          ## ✨ Features
+          - Feature description ([commit_hash](https://github.com/${{ github.repository }}/commit/commit_hash))
+          
+          ## 🐛 Bug Fixes
+          - Fix description ([commit_hash](https://github.com/${{ github.repository }}/commit/commit_hash))
+          
+          ## 📚 Documentation
+          - Doc change description ([commit_hash](https://github.com/${{ github.repository }}/commit/commit_hash))
+          
+          ## 🔧 Other Changes
+          - Other change description ([commit_hash](https://github.com/${{ github.repository }}/commit/commit_hash))
+          ```
+          
+          Guidelines for categorization:
+          - Look for conventional commit prefixes: feat:, fix:, docs:, refactor:, test:, chore:, perf:, style:, build:, ci:
+          - Skip trivial commits (typo fixes, merge commits, version bumps)
+          - Omit sections with no items
+          - Be concise but informative
+          - Focus on user-facing changes
+          
+          ## Step 3: Check if tag exists
+          Use execute_command to run:
+          git rev-parse ${{ steps.new_version.outputs.new_version }} 2>/dev/null && echo "exists" || echo "not_exists"
+          
+          ## Step 4: Create and push tag (only if it doesn't exist)
+          If the tag doesn't exist, use execute_command to run these commands:
+          
+          ```bash
           git config user.name "ibm-bob[bot]"
           git config user.email "ibm-bob[bot]@users.noreply.github.com"
-
           git remote set-url origin https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}
+          git tag -a "${{ steps.new_version.outputs.new_version }}" -F changelog.md
+          git push origin "${{ steps.new_version.outputs.new_version }}"
+          ```
           
-          # Create annotated tag with changelog as message
-          if [ -f changelog.md ]; then
-            echo "Using generated changelog for tag message"
-            git tag -a "$NEW_VERSION" -F changelog.md
+          If the tag already exists, just report that and skip tag creation.
+          
+          ## Important Notes
+          - Use execute_command for all git/gh operations
+          - The GH_TOKEN environment variable is already set for authentication
+          - After completing all steps, use attempt_completion to report the outcome
+          - Include in your completion message whether the tag was created or already existed
+          EOF
+          )"
+          
+          # Capture Bob's exit code
+          BOB_EXIT_CODE=$?
+          
+          if [ $BOB_EXIT_CODE -eq 0 ]; then
+            echo "tag_created=true" >> $GITHUB_OUTPUT
+            echo "✅ Bob completed successfully"
           else
-            echo "⚠️  Changelog not found, using fallback message"
-            git tag -a "$NEW_VERSION" -m "Release $NEW_VERSION (${BUMP_TYPE} bump) - PR #${PR_NUMBER}: ${PR_TITLE}"
+            echo "tag_created=false" >> $GITHUB_OUTPUT
+            echo "❌ Bob failed with exit code $BOB_EXIT_CODE"
+            exit 1
           fi
+      
+      - name: Check if tag was created
+        id: check_tag_created
+        run: |
+          NEW_VERSION="${{ steps.new_version.outputs.new_version }}"
           
-          git push origin "$NEW_VERSION"
-          
-          echo "✅ Created and pushed tag: $NEW_VERSION"
-          echo "tag_created=true" >> $GITHUB_OUTPUT
+          # Check if tag exists now (Bob should have created it)
+          if git rev-parse "$NEW_VERSION" >/dev/null 2>&1; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "✅ Tag $NEW_VERSION exists"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "⚠️  Tag $NEW_VERSION was not created"
+          fi
       
       - name: Trigger build and publish workflow
-        if: steps.check_tag.outputs.exists == 'false' && steps.create_tag.outputs.tag_created == 'true'
+        if: steps.check_tag_created.outputs.exists == 'true' && steps.bob_tag.outputs.tag_created == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -232,7 +234,7 @@ jobs:
           echo "✅ Build workflow triggered successfully"
       
       - name: Comment on PR (tag created)
-        if: steps.check_tag.outputs.exists == 'false'
+        if: steps.check_tag_created.outputs.exists == 'true'
         uses: actions/github-script@v7
         with:
           script: |
@@ -247,7 +249,7 @@ jobs:
             });
       
       - name: Comment on PR (tag already exists)
-        if: steps.check_tag.outputs.exists == 'true'
+        if: steps.check_tag_created.outputs.exists == 'false'
         uses: actions/github-script@v7
         with:
           script: |
@@ -257,7 +259,7 @@ jobs:
               issue_number: context.payload.pull_request.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `⏭️ **Tag ${newVersion}** already exists - skipping tag creation.\n\nYou can manually trigger the build workflow if needed.`
+              body: `⏭️ **Tag ${newVersion}** already exists or was not created - skipping.\n\nYou can manually trigger the build workflow if needed.`
             });
 
 # Made with Bob
