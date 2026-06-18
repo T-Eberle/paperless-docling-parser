@@ -126,6 +126,14 @@ jobs:
             echo "✅ Tag $NEW_VERSION does not exist - proceeding with Bob"
           fi
       
+      - name: Configure git for Bob
+        if: steps.precheck_tag.outputs.exists == 'false'
+        run: |
+          git config user.name "ibm-bob[bot]"
+          git config user.email "ibm-bob[bot]@users.noreply.github.com"
+          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}
+          echo "✅ Git configured for Bob"
+      
       - name: Generate changelog and create tag with Bob
         id: bob_tag
         if: steps.precheck_tag.outputs.exists == 'false'
@@ -136,14 +144,13 @@ jobs:
           bob --accept-license --auth-method api-key --approval-mode auto_edit -p "$(cat <<'EOF'
           You are creating a version tag for ${{ steps.new_version.outputs.new_version }} of the ${{ github.repository }} repository, non-interactively, in CI.
           
-          Your task is to complete these steps in order. After EACH step, use attempt_completion to report progress before continuing to the next step:
+          Complete these steps in order to create the release tag:
           
           ## Step 1: Fetch commit history
           Use execute_command to run:
           git log ${{ steps.get_latest_tag.outputs.latest_tag }}..HEAD --pretty=format:"%h|%an|%ad|%s" --date=short
           
           This will give you commits in format: short_hash|author|date|subject
-          After fetching, use attempt_completion to confirm you have the commit data.
           
           ## Step 2: Generate changelog
           Analyze the commit output and create a changelog.md file using write_to_file with this structure:
@@ -177,25 +184,18 @@ jobs:
           - Be concise but informative
           - Focus on user-facing changes
           
-          After creating changelog.md, use attempt_completion to confirm the file was created.
-          
           ## Step 3: Create and push tag
-          Use execute_command to run these commands in sequence:
+          Git is already configured. Use execute_command to run:
           
           ```bash
-          git config user.name "ibm-bob[bot]"
-          git config user.email "ibm-bob[bot]@users.noreply.github.com"
-          git remote set-url origin https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}
-          git tag -a "${{ steps.new_version.outputs.new_version }}" -F changelog.md
+          git tag -a "${{ steps.new_version.outputs.new_version }}" -F changelog.md && \
           git push origin "${{ steps.new_version.outputs.new_version }}"
           ```
           
-          After pushing the tag, use attempt_completion to confirm the tag was created and pushed successfully.
-          
           ## Important Notes
-          - Use execute_command for all git/gh operations
-          - The GH_TOKEN environment variable is already set for authentication
-          - Report progress after EACH major step using attempt_completion
+          - Use execute_command for all git operations
+          - Git authentication is already configured in the workflow
+          - Complete all steps, then use attempt_completion to report the final outcome
           - If any step fails, report the error clearly in attempt_completion
           EOF
           )"
@@ -228,15 +228,17 @@ jobs:
           fi
       
       - name: Trigger build and publish workflow
-        if: |
-          (steps.precheck_tag.outputs.exists == 'false' && steps.verify_tag.outputs.created == 'true' && steps.bob_tag.outputs.success == 'true') ||
-          (steps.precheck_tag.outputs.exists == 'true')
+        if: steps.precheck_tag.outputs.exists == 'true' || (steps.verify_tag.outputs.created == 'true' && steps.bob_tag.outputs.success == 'true')
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           NEW_VERSION="${{ steps.new_version.outputs.new_version }}"
           
-          echo "Triggering build-and-publish workflow for tag $NEW_VERSION..."
+          if [ "${{ steps.precheck_tag.outputs.exists }}" == "true" ]; then
+            echo "Triggering build-and-publish workflow for existing tag $NEW_VERSION..."
+          else
+            echo "Triggering build-and-publish workflow for newly created tag $NEW_VERSION..."
+          fi
           
           gh workflow run build-and-publish.yml \
             --ref main \
