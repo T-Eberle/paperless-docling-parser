@@ -103,7 +103,8 @@ jobs:
       - name: Build core package
         run: |
           cd packages/core
-          echo "Building core packag          uv build --out-dir dist
+          echo "Building core package..."          
+          uv build --out-dir dist
           echo "✅ Core package built successfully"
       
       - name: Build docling-serve package
