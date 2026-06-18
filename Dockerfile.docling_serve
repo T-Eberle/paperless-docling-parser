@@ -14,7 +14,7 @@ RUN apt-get update && \
 
 
 # Install the docling-serve package (automatically installs core as dependency)
-RUN pip install --no-cache-dir pgx-docling-parser-serve
+RUN pip install --no-cache-dir pgx-docling-parser-serve==0.1.15
 
 # Switch back to paperless user
 USER paperless

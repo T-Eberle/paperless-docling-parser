@@ -188,7 +188,7 @@ class DoclingRemoteConverter(BaseDoclingConverter):
         """Convert using EasyOCR preset."""
         return self._convert(document_path, {
             "ocr_preset": "easyocr",
-            "ocr_lang": ["en", "de"]
+            "ocr_lang": ["en", "de", "fr", "es"]
         })
     
     def convert_tesseract(self, document_path: Path) -> DoclingDocument:
