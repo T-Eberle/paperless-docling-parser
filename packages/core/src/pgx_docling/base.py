@@ -49,6 +49,25 @@ class BaseDoclingConverter(ABC):
             doc = self.convert_granite_docling(document_path)
         return doc
 
+    def ocr_language(self) -> list[str]:
+        """
+        Get the OCR language(s) from environment variable.
+        
+        Returns:
+            list[str]: List of language codes, defaults to ['eng'] if not set.
+        
+        Example:
+            PAPERLESS_DOCLING_OCR_LANGUAGE="eng,deu,fra" -> ['eng', 'deu', 'fra']
+        """
+        env_value = os.environ.get("PAPERLESS_DOCLING_OCR_LANGUAGE", "eng")
+        
+        # Split by comma and strip whitespace from each language code
+        languages = [lang.strip() for lang in env_value.split(",") if lang.strip()]
+        
+        # Return default if empty after processing
+        return languages if languages else ["eng"]
+
+
 
     @abstractmethod
     def convert_easyocr(self, document_path: Path) -> DoclingDocument:
