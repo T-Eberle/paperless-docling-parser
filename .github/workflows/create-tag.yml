@@ -114,8 +114,21 @@ jobs:
       - name: Install Bob Shell
         run: curl -fsSL https://bob.ibm.com/download/bobshell.sh | bash -s -- --pm npm
       
+      - name: Check if tag already exists (pre-check)
+        id: precheck_tag
+        run: |
+          NEW_VERSION="${{ steps.new_version.outputs.new_version }}"
+          if git rev-parse "$NEW_VERSION" >/dev/null 2>&1; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "⚠️  Tag $NEW_VERSION already exists - skipping Bob"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "✅ Tag $NEW_VERSION does not exist - proceeding with Bob"
+          fi
+      
       - name: Generate changelog and create tag with Bob
         id: bob_tag
+        if: steps.precheck_tag.outputs.exists == 'false'
         env:
           BOBSHELL_API_KEY: ${{ secrets.BOBSHELL_API_KEY }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -123,17 +136,14 @@ jobs:
           bob --accept-license --auth-method api-key --approval-mode auto_edit -p "$(cat <<'EOF'
           You are creating a version tag for ${{ steps.new_version.outputs.new_version }} of the ${{ github.repository }} repository, non-interactively, in CI.
           
-          Your task is to:
-          1. Fetch git commit history since the last release (${{ steps.get_latest_tag.outputs.latest_tag }})
-          2. Generate a professional changelog
-          3. Check if the tag already exists
-          4. Create and push the tag with the changelog as the message (if it doesn't exist)
+          Your task is to complete these steps in order. After EACH step, use attempt_completion to report progress before continuing to the next step:
           
           ## Step 1: Fetch commit history
           Use execute_command to run:
           git log ${{ steps.get_latest_tag.outputs.latest_tag }}..HEAD --pretty=format:"%h|%an|%ad|%s" --date=short
           
           This will give you commits in format: short_hash|author|date|subject
+          After fetching, use attempt_completion to confirm you have the commit data.
           
           ## Step 2: Generate changelog
           Analyze the commit output and create a changelog.md file using write_to_file with this structure:
@@ -167,12 +177,10 @@ jobs:
           - Be concise but informative
           - Focus on user-facing changes
           
-          ## Step 3: Check if tag exists
-          Use execute_command to run:
-          git rev-parse ${{ steps.new_version.outputs.new_version }} 2>/dev/null && echo "exists" || echo "not_exists"
+          After creating changelog.md, use attempt_completion to confirm the file was created.
           
-          ## Step 4: Create and push tag (only if it doesn't exist)
-          If the tag doesn't exist, use execute_command to run these commands:
+          ## Step 3: Create and push tag
+          Use execute_command to run these commands in sequence:
           
           ```bash
           git config user.name "ibm-bob[bot]"
@@ -182,13 +190,13 @@ jobs:
           git push origin "${{ steps.new_version.outputs.new_version }}"
           ```
           
-          If the tag already exists, just report that and skip tag creation.
+          After pushing the tag, use attempt_completion to confirm the tag was created and pushed successfully.
           
           ## Important Notes
           - Use execute_command for all git/gh operations
           - The GH_TOKEN environment variable is already set for authentication
-          - After completing all steps, use attempt_completion to report the outcome
-          - Include in your completion message whether the tag was created or already existed
+          - Report progress after EACH major step using attempt_completion
+          - If any step fails, report the error clearly in attempt_completion
           EOF
           )"
           
@@ -196,30 +204,33 @@ jobs:
           BOB_EXIT_CODE=$?
           
           if [ $BOB_EXIT_CODE -eq 0 ]; then
-            echo "tag_created=true" >> $GITHUB_OUTPUT
+            echo "success=true" >> $GITHUB_OUTPUT
             echo "✅ Bob completed successfully"
           else
-            echo "tag_created=false" >> $GITHUB_OUTPUT
+            echo "success=false" >> $GITHUB_OUTPUT
             echo "❌ Bob failed with exit code $BOB_EXIT_CODE"
             exit 1
           fi
       
-      - name: Check if tag was created
-        id: check_tag_created
+      - name: Verify tag was created
+        id: verify_tag
+        if: steps.precheck_tag.outputs.exists == 'false'
         run: |
           NEW_VERSION="${{ steps.new_version.outputs.new_version }}"
           
-          # Check if tag exists now (Bob should have created it)
+          # Verify tag exists after Bob ran
           if git rev-parse "$NEW_VERSION" >/dev/null 2>&1; then
-            echo "exists=true" >> $GITHUB_OUTPUT
-            echo "✅ Tag $NEW_VERSION exists"
+            echo "created=true" >> $GITHUB_OUTPUT
+            echo "✅ Tag $NEW_VERSION was successfully created"
           else
-            echo "exists=false" >> $GITHUB_OUTPUT
-            echo "⚠️  Tag $NEW_VERSION was not created"
+            echo "created=false" >> $GITHUB_OUTPUT
+            echo "❌ Tag $NEW_VERSION was not created (Bob may have failed)"
           fi
       
       - name: Trigger build and publish workflow
-        if: steps.check_tag_created.outputs.exists == 'true' && steps.bob_tag.outputs.tag_created == 'true'
+        if: |
+          (steps.precheck_tag.outputs.exists == 'false' && steps.verify_tag.outputs.created == 'true' && steps.bob_tag.outputs.success == 'true') ||
+          (steps.precheck_tag.outputs.exists == 'true')
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -233,8 +244,8 @@ jobs:
           
           echo "✅ Build workflow triggered successfully"
       
-      - name: Comment on PR (tag created)
-        if: steps.check_tag_created.outputs.exists == 'true'
+      - name: Comment on PR (tag created by Bob)
+        if: steps.precheck_tag.outputs.exists == 'false' && steps.verify_tag.outputs.created == 'true'
         uses: actions/github-script@v7
         with:
           script: |
@@ -245,11 +256,11 @@ jobs:
               issue_number: context.payload.pull_request.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `🏷️ **Tag ${newVersion}** created successfully!\n\n- Version bump: ${bumpType}\n- Build and publish workflow will be triggered automatically`
+              body: `🏷️ **Tag ${newVersion}** created successfully!\n\n- Version bump: ${bumpType}\n- Build and publish workflow triggered automatically`
             });
       
-      - name: Comment on PR (tag already exists)
-        if: steps.check_tag_created.outputs.exists == 'false'
+      - name: Comment on PR (tag already existed)
+        if: steps.precheck_tag.outputs.exists == 'true'
         uses: actions/github-script@v7
         with:
           script: |
@@ -259,7 +270,21 @@ jobs:
               issue_number: context.payload.pull_request.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `⏭️ **Tag ${newVersion}** already exists or was not created - skipping.\n\nYou can manually trigger the build workflow if needed.`
+              body: `⏭️ **Tag ${newVersion}** already exists - skipping tag creation.\n\nBuild workflow will be triggered for the existing tag.`
+            });
+      
+      - name: Comment on PR (tag creation failed)
+        if: steps.precheck_tag.outputs.exists == 'false' && (steps.verify_tag.outputs.created == 'false' || steps.bob_tag.outputs.success == 'false')
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const newVersion = '${{ steps.new_version.outputs.new_version }}';
+            
+            github.rest.issues.createComment({
+              issue_number: context.payload.pull_request.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `❌ **Failed to create tag ${newVersion}**\n\nPlease check the workflow logs for details. You may need to manually create the tag.`
             });
 
 # Made with Bob
