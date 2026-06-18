@@ -12,14 +12,33 @@ license = "MIT"
 authors = [
   { name = "T-Eberle" },
 ]
+keywords = ["paperless", "paperless-ngx", "docling", "pdf"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Framework :: Django",
+  "Intended Audience :: System Administrators",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: POSIX :: Linux",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Communications :: Email",
+  "Topic :: Office/Business",
+]
+
 
 # Core dependencies needed by both local and docling_serve
 dependencies = [
+    "pymupdf>=1.23.0",
     "docling-core>=2.0.0",
+    "Pillow>=10.0.0",
 ]
 
+[project.urls]
+Homepage = "https://github.com/T-Eberle/paperless-docling-parser"
+Issues = "https://github.com/T-Eberle/paperless-docling-parser/issues"
+
 [tool.hatch.build.targets.wheel]
-packages = ["src/core"]
+packages = ["src/pgx_docling"]
 
 [tool.hatch.build.targets.sdist]
 include = [

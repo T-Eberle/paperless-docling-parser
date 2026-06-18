@@ -16,8 +16,8 @@ import os
 import pytest
 from pathlib import Path
 
-from core import PdfConversionMode
-from docling_serve.serve import DoclingRemoteConverter
+from pgx_docling import PdfConversionMode
+from pgx_docling_serve.serve import DoclingRemoteConverter
 from docling_core.types.doc.document import DoclingDocument
 
 

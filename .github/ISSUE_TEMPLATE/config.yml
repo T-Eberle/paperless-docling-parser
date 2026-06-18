@@ -1,0 +1,17 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 💬 GitHub Discussions
+    url: https://github.com/T-Eberle/paperless-docling-parser/discussions
+    about: Ask questions and discuss ideas with the community
+  - name: 📖 Documentation
+    url: https://github.com/T-Eberle/paperless-docling-parser/blob/main/README.md
+    about: Read the project documentation
+  - name: 🤝 Contributing Guide
+    url: https://github.com/T-Eberle/paperless-docling-parser/blob/main/CONTRIBUTING.md
+    about: Learn how to contribute to the project
+  - name: 🔗 Paperless-ngx
+    url: https://github.com/paperless-ngx/paperless-ngx
+    about: Visit the Paperless-ngx project
+  - name: 🔗 Docling
+    url: https://github.com/DS4SD/docling
+    about: Visit the Docling project

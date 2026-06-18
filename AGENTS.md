@@ -6,9 +6,11 @@ This file provides guidance to agents when working with code in this repository.
 
 **Build packages (from package directories):**
 ```bash
-cd packages/core && uv build
-cd packages/docling_serve && uv build
+cd packages/core && uv build --out-dir dist
+cd packages/docling_serve && uv build --out-dir dist
 ```
+
+**Important:** Always use `--out-dir dist` to ensure build artifacts are created in the package's local `dist/` directory, not the workspace root. This is critical for the CI/CD pipeline.
 
 **Run tests:**
 ```bash

@@ -6,7 +6,7 @@ from typing import Dict, Any
 import httpx
 from docling_core.types.doc.document import DoclingDocument
 
-from core import BaseDoclingConverter, get_pdf_conversion_mode
+from pgx_docling import BaseDoclingConverter, get_pdf_conversion_mode
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -188,7 +188,7 @@ class DoclingRemoteConverter(BaseDoclingConverter):
         """Convert using EasyOCR preset."""
         return self._convert(document_path, {
             "ocr_preset": "easyocr",
-            "ocr_lang": ["en", "de"]
+            "ocr_lang": ["en", "de", "fr", "es"]
         })
     
     def convert_tesseract(self, document_path: Path) -> DoclingDocument:

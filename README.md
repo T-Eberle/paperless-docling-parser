@@ -21,7 +21,7 @@ The Markdown output is optimized for semantic search and AI processing, making y
 If you already have a Paperless-ngx instance running, you can install the `docling_serve` version of the package:
 
 ```bash
-pip install paperless-docling-parser[docling-serve]
+pip install pgx-docling-parser-serve
 ```
 
 **Prerequisites:**
@@ -61,7 +61,7 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 # Install the plugin with docling-serve variant
-RUN pip install --no-cache-dir paperless-docling-parser[docling-serve]
+RUN pip install --no-cache-dir pgx-docling-parser-serve
 
 # Switch back to paperless user
 USER paperless
@@ -125,7 +125,7 @@ curl http://localhost:5000/health
 ### Check if the plugin is installed
 
 ```bash
-pip list | grep paperless-docling-parser
+pip list | grep pgx-docling-parser
 ```
 
 ### Test Docling-Serve connection
