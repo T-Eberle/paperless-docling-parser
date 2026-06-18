@@ -1,13 +1,12 @@
 from abc import ABC, abstractmethod
 from enum import Enum
 from pathlib import Path
-
-
 import os 
 
 from docling_core.types.doc.document import DoclingDocument
 
 PAPERLESS_DOCLING_PDF_CONVERSION_MODE = "PAPERLESS_DOCLING_PDF_CONVERSION_MODE"
+PAPERLESS_DOCLING_OCR_LANGUAGE = "PAPERLESS_DOCLING_OCR_LANGUAGE"
 
 class PdfConversionMode(Enum):
     EASYOCR = "easyocr"
@@ -59,7 +58,7 @@ class BaseDoclingConverter(ABC):
         Example:
             PAPERLESS_DOCLING_OCR_LANGUAGE="eng,deu,fra" -> ['eng', 'deu', 'fra']
         """
-        env_value = os.environ.get("PAPERLESS_DOCLING_OCR_LANGUAGE", "eng")
+        env_value = os.environ.get(PAPERLESS_DOCLING_OCR_LANGUAGE, "eng")
         
         # Split by comma and strip whitespace from each language code
         languages = [lang.strip() for lang in env_value.split(",") if lang.strip()]
