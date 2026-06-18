@@ -120,40 +120,43 @@ jobs:
           NEW_VERSION="${{ steps.new_version.outputs.new_version }}"
           if git rev-parse "$NEW_VERSION" >/dev/null 2>&1; then
             echo "exists=true" >> $GITHUB_OUTPUT
-            echo "⚠️  Tag $NEW_VERSION already exists - skipping Bob"
+            echo "⚠️  Tag $NEW_VERSION already exists - skipping changelog generation"
           else
             echo "exists=false" >> $GITHUB_OUTPUT
-            echo "✅ Tag $NEW_VERSION does not exist - proceeding with Bob"
+            echo "✅ Tag $NEW_VERSION does not exist - proceeding with changelog generation"
           fi
       
-      - name: Configure git for Bob
+      - name: Fetch commit history
+        id: fetch_commits
         if: steps.precheck_tag.outputs.exists == 'false'
         run: |
-          git config user.name "ibm-bob[bot]"
-          git config user.email "ibm-bob[bot]@users.noreply.github.com"
-          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}
-          echo "✅ Git configured for Bob"
+          LATEST_TAG="${{ steps.get_latest_tag.outputs.latest_tag }}"
+          
+          echo "Fetching commits from $LATEST_TAG to HEAD..."
+          git log ${LATEST_TAG}..HEAD --pretty=format:"%h|%an|%ad|%s" --date=short > commits.txt
+          
+          COMMIT_COUNT=$(wc -l < commits.txt)
+          echo "Found $COMMIT_COUNT commits since $LATEST_TAG"
+          
+          # Display commits for Bob to analyze
+          echo "Commits to analyze:"
+          cat commits.txt
       
-      - name: Generate changelog and create tag with Bob
-        id: bob_tag
+      - name: Generate changelog with Bob
+        id: bob_changelog
         if: steps.precheck_tag.outputs.exists == 'false'
+        continue-on-error: true
         env:
           BOBSHELL_API_KEY: ${{ secrets.BOBSHELL_API_KEY }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           bob --accept-license --auth-method api-key --approval-mode auto_edit -p "$(cat <<'EOF'
-          You are creating a version tag for ${{ steps.new_version.outputs.new_version }} of the ${{ github.repository }} repository, non-interactively, in CI.
+          You are generating a changelog for version ${{ steps.new_version.outputs.new_version }} of the ${{ github.repository }} repository, non-interactively, in CI.
           
-          Complete these steps in order to create the release tag:
+          The commit history since the last release (${{ steps.get_latest_tag.outputs.latest_tag }}) is in the file commits.txt.
           
-          ## Step 1: Fetch commit history
-          Use execute_command to run:
-          git log ${{ steps.get_latest_tag.outputs.latest_tag }}..HEAD --pretty=format:"%h|%an|%ad|%s" --date=short
+          Read the commits.txt file. The format is: short_hash|author|date|subject
           
-          This will give you commits in format: short_hash|author|date|subject
-          
-          ## Step 2: Generate changelog
-          Analyze the commit output and create a changelog.md file using write_to_file with this structure:
+          Then create a changelog.md file using write_to_file with this structure:
           
           ```markdown
           # Release ${{ steps.new_version.outputs.new_version }}
@@ -183,34 +186,70 @@ jobs:
           - Omit sections with no items
           - Be concise but informative
           - Focus on user-facing changes
-          
-          ## Step 3: Create and push tag
-          Git is already configured. Use execute_command to run:
-          
-          ```bash
-          git tag -a "${{ steps.new_version.outputs.new_version }}" -F changelog.md && \
-          git push origin "${{ steps.new_version.outputs.new_version }}"
-          ```
-          
-          ## Important Notes
-          - Use execute_command for all git operations
-          - Git authentication is already configured in the workflow
-          - Complete all steps, then use attempt_completion to report the final outcome
-          - If any step fails, report the error clearly in attempt_completion
+          - Use attempt_completion when the changelog.md file is created
           EOF
           )"
           
-          # Capture Bob's exit code
-          BOB_EXIT_CODE=$?
-          
-          if [ $BOB_EXIT_CODE -eq 0 ]; then
+          # Check if Bob succeeded
+          if [ $? -eq 0 ]; then
             echo "success=true" >> $GITHUB_OUTPUT
-            echo "✅ Bob completed successfully"
+            echo "✅ Bob generated changelog successfully"
           else
             echo "success=false" >> $GITHUB_OUTPUT
-            echo "❌ Bob failed with exit code $BOB_EXIT_CODE"
-            exit 1
+            echo "⚠️  Bob failed to generate changelog"
           fi
+      
+      - name: Verify changelog was created
+        id: verify_changelog
+        if: steps.precheck_tag.outputs.exists == 'false'
+        run: |
+          if [ -f changelog.md ]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "✅ Changelog file exists"
+            echo "Changelog preview:"
+            head -n 20 changelog.md
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "❌ Changelog file not found"
+          fi
+      
+      - name: Create fallback changelog
+        if: steps.precheck_tag.outputs.exists == 'false' && steps.verify_changelog.outputs.exists == 'false'
+        run: |
+          cat > changelog.md <<EOF
+          # Release ${{ steps.new_version.outputs.new_version }}
+          *Released on $(date +%Y-%m-%d) - ${{ steps.version_bump.outputs.bump_type }} release*
+          
+          ---
+          
+          ## 🎯 Summary
+          
+          This ${{ steps.version_bump.outputs.bump_type }} release includes updates and improvements.
+          
+          ## 🔧 Changes
+          
+          See commit history for details: https://github.com/${{ github.repository }}/compare/${{ steps.get_latest_tag.outputs.latest_tag }}...${{ steps.new_version.outputs.new_version }}
+          EOF
+          
+          echo "⚠️  Created fallback changelog"
+      
+      - name: Create and push tag
+        id: create_tag
+        if: steps.precheck_tag.outputs.exists == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          NEW_VERSION="${{ steps.new_version.outputs.new_version }}"
+          
+          git config user.name "ibm-bob[bot]"
+          git config user.email "ibm-bob[bot]@users.noreply.github.com"
+          git remote set-url origin https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}
+          
+          git tag -a "$NEW_VERSION" -F changelog.md
+          git push origin "$NEW_VERSION"
+          
+          echo "success=true" >> $GITHUB_OUTPUT
+          echo "✅ Created and pushed tag: $NEW_VERSION"
       
       - name: Verify tag was created
         id: verify_tag
@@ -218,17 +257,17 @@ jobs:
         run: |
           NEW_VERSION="${{ steps.new_version.outputs.new_version }}"
           
-          # Verify tag exists after Bob ran
+          # Verify tag exists after creation
           if git rev-parse "$NEW_VERSION" >/dev/null 2>&1; then
             echo "created=true" >> $GITHUB_OUTPUT
             echo "✅ Tag $NEW_VERSION was successfully created"
           else
             echo "created=false" >> $GITHUB_OUTPUT
-            echo "❌ Tag $NEW_VERSION was not created (Bob may have failed)"
+            echo "❌ Tag $NEW_VERSION was not created"
           fi
       
       - name: Trigger build and publish workflow
-        if: steps.precheck_tag.outputs.exists == 'true' || (steps.verify_tag.outputs.created == 'true' && steps.bob_tag.outputs.success == 'true')
+        if: steps.precheck_tag.outputs.exists == 'true' || (steps.create_tag.outputs.success == 'true' && steps.verify_tag.outputs.created == 'true')
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -246,19 +285,26 @@ jobs:
           
           echo "✅ Build workflow triggered successfully"
       
-      - name: Comment on PR (tag created by Bob)
-        if: steps.precheck_tag.outputs.exists == 'false' && steps.verify_tag.outputs.created == 'true'
+      - name: Comment on PR (tag created)
+        if: steps.precheck_tag.outputs.exists == 'false' && steps.create_tag.outputs.success == 'true' && steps.verify_tag.outputs.created == 'true'
         uses: actions/github-script@v7
         with:
           script: |
             const newVersion = '${{ steps.new_version.outputs.new_version }}';
             const bumpType = '${{ steps.version_bump.outputs.bump_type }}';
+            const changelogSuccess = '${{ steps.bob_changelog.outputs.success }}' === 'true';
+            
+            let message = `🏷️ **Tag ${newVersion}** created successfully!\n\n- Version bump: ${bumpType}\n- Build and publish workflow triggered automatically`;
+            
+            if (!changelogSuccess) {
+              message += '\n\n⚠️ Note: Changelog was generated using fallback template (Bob generation failed)';
+            }
             
             github.rest.issues.createComment({
               issue_number: context.payload.pull_request.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `🏷️ **Tag ${newVersion}** created successfully!\n\n- Version bump: ${bumpType}\n- Build and publish workflow triggered automatically`
+              body: message
             });
       
       - name: Comment on PR (tag already existed)
@@ -276,7 +322,7 @@ jobs:
             });
       
       - name: Comment on PR (tag creation failed)
-        if: steps.precheck_tag.outputs.exists == 'false' && (steps.verify_tag.outputs.created == 'false' || steps.bob_tag.outputs.success == 'false')
+        if: steps.precheck_tag.outputs.exists == 'false' && (steps.create_tag.outputs.success != 'true' || steps.verify_tag.outputs.created != 'true')
         uses: actions/github-script@v7
         with:
           script: |
