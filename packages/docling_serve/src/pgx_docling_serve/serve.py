@@ -188,14 +188,14 @@ class DoclingRemoteConverter(BaseDoclingConverter):
         """Convert using EasyOCR preset."""
         return self._convert(document_path, {
             "ocr_preset": "easyocr",
-            "ocr_lang": ["en", "de", "fr", "es"]
+            "ocr_lang": self.ocr_language()
         })
     
     def convert_tesseract(self, document_path: Path) -> DoclingDocument:
         """Convert using Tesseract OCR preset."""
         return self._convert(document_path, {
             "ocr_preset": "tesseract",
-            "ocr_lang": ["eng", "deu"]
+            "ocr_lang": self.ocr_language()
         })
     
     def convert_granite_docling(self, document_path: Path) -> DoclingDocument:

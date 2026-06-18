@@ -1,13 +1,12 @@
 from abc import ABC, abstractmethod
 from enum import Enum
 from pathlib import Path
-
-
 import os 
 
 from docling_core.types.doc.document import DoclingDocument
 
 PAPERLESS_DOCLING_PDF_CONVERSION_MODE = "PAPERLESS_DOCLING_PDF_CONVERSION_MODE"
+PAPERLESS_DOCLING_OCR_LANGUAGE = "PAPERLESS_DOCLING_OCR_LANGUAGE"
 
 class PdfConversionMode(Enum):
     EASYOCR = "easyocr"
@@ -48,6 +47,25 @@ class BaseDoclingConverter(ABC):
         elif self.pdf_conversion_mode == PdfConversionMode.GRANITE_DOCLING:
             doc = self.convert_granite_docling(document_path)
         return doc
+
+    def ocr_language(self) -> list[str]:
+        """
+        Get the OCR language(s) from environment variable.
+        
+        Returns:
+            list[str]: List of language codes, defaults to ['eng'] if not set.
+        
+        Example:
+            PAPERLESS_DOCLING_OCR_LANGUAGE="eng,deu,fra" -> ['eng', 'deu', 'fra']
+        """
+        env_value = os.environ.get(PAPERLESS_DOCLING_OCR_LANGUAGE, "eng")
+        
+        # Split by comma and strip whitespace from each language code
+        languages = [lang.strip() for lang in env_value.split(",") if lang.strip()]
+        
+        # Return default if empty after processing
+        return languages if languages else ["eng"]
+
 
 
     @abstractmethod
