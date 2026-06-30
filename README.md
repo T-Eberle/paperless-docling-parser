@@ -23,7 +23,7 @@ The plugin ships as two installable PyPI packages:
 | Package | PyPI name | Purpose |
 |---|---|---|
 | **serve** | `pgx-docling-parser-serve` | Connects to an external docling-serve API — recommended for production |
-| **core** | `pgx-docling-parser-core` | Shared base classes, installed automatically as a dependency |
+| **core** | `pgx-docling-parser-core` | Shared base classes — pulled in automatically as a PyPI dependency when you install `serve`; linked as an editable workspace install during local development |
 
 > A `local` package (bundling Docling directly, no server needed) is planned but not yet available.
 
