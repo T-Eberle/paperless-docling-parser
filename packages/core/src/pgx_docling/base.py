@@ -55,10 +55,10 @@ class BaseDoclingConverter(ABC):
         Returns:
             list[str]: List of language codes, defaults to ['eng'] if not set.
         
-        Example:
-            PAPERLESS_DOCLING_OCR_LANGUAGE="eng,deu,fra" -> ['eng', 'deu', 'fra']
+        Example (easyocr):    PAPERLESS_DOCLING_OCR_LANGUAGE="en,de,fr"
+        Example (tesseract):  PAPERLESS_DOCLING_OCR_LANGUAGE="eng,deu,fra"
         """
-        env_value = os.environ.get(PAPERLESS_DOCLING_OCR_LANGUAGE, "eng")
+        env_value = os.environ.get(PAPERLESS_DOCLING_OCR_LANGUAGE, "en")
         
         # Split by comma and strip whitespace from each language code
         languages = [lang.strip() for lang in env_value.split(",") if lang.strip()]
