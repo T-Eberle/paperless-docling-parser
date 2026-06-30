@@ -1,156 +1,204 @@
 # paperless-docling-parser
 
-A Paperless-ngx parser plugin that uses [Docling](https://github.com/DS4SD/docling) to parse PDF files and convert them to Markdown format, making documents "AI ready" for agents and RAG (Retrieval-Augmented Generation) use cases.
+A [Paperless-ngx](https://github.com/paperless-ngx/paperless-ngx) parser plugin that uses [Docling](https://github.com/DS4SD/docling) to convert PDF files into richly-structured Markdown — making your document archive **AI-ready** for LLM agents and RAG pipelines.
 
-## What is this package for?
+---
 
-This plugin integrates Docling's advanced document parsing capabilities into Paperless-ngx. It:
+## How it works
 
-- **Parses PDF files** using Docling
-- **Converts content to Markdown** with proper structure preservation (headings, lists, tables, etc.)
-- **Makes documents AI-ready** for use with LLM agents and RAG systems
-- **Preserves document structure** including tables, images, and formatting
-- **Supports multiple OCR backends** (EasyOCR, Tesseract, Vision Language Models)
+When Paperless-ngx ingests a PDF, this plugin intercepts it and sends it to a running [docling-serve](https://github.com/docling-project/docling-serve) instance. Docling performs layout-aware OCR and returns a structured [`DoclingDocument`](https://github.com/docling-project/docling-core), which is then exported to Markdown and stored as the document's full-text content.
 
-The Markdown output is optimized for semantic search and AI processing, making your document archive queryable and usable by modern AI systems.
+```
+PDF → docling-serve → DoclingDocument → Markdown → Paperless-ngx full-text
+```
 
-## Installation
+**Why Markdown?** Markdown preserves headings, lists, and tables in a format that semantic search engines and LLMs consume far better than raw OCR text.
 
-### Option 1: Install via pip (Recommended for existing Paperless-ngx instances)
+---
 
-If you already have a Paperless-ngx instance running, you can install the `docling_serve` version of the package:
+## Packages
+
+The plugin ships as two installable PyPI packages:
+
+| Package | PyPI name | Purpose |
+|---|---|---|
+| **serve** | `pgx-docling-parser-serve` | Connects to an external docling-serve API — recommended for production |
+| **core** | `pgx-docling-parser-core` | Shared base classes — pulled in automatically as a PyPI dependency when you install `serve`; linked as an editable workspace install during local development |
+
+> A `local` package (bundling Docling directly, no server needed) is planned but not yet available.
+
+---
+
+## Quick start — Docker Compose
+
+The fastest way to get a complete, working stack (Paperless-ngx + PostgreSQL + Redis + the plugin):
+
+```bash
+git clone https://github.com/T-Eberle/paperless-docling-parser.git
+cd paperless-docling-parser
+docker compose up -d
+```
+
+Then open **http://localhost:8000** and log in with `admin` / `admin`.
+
+> ⚠️ Change the default credentials and the `PAPERLESS_SECRET_KEY` value in [`docker-compose.yaml`](docker-compose.yaml) before exposing the instance to a network.
+
+The compose file uses [`Dockerfile.docling_serve`](Dockerfile.docling_serve) to build a Paperless-ngx image with the plugin pre-installed. You need to supply your own docling-serve instance and point `PAPERLESS_DOCLING_SERVE_URL` at it (see [Configuration](#configuration)).
+
+---
+
+## Installation on an existing Paperless-ngx instance
+
+### 1. Install the plugin
+
+#### Via pip
 
 ```bash
 pip install pgx-docling-parser-serve
 ```
 
-**Prerequisites:**
-- A running [docling-serve](https://github.com/docling-project/docling-serve) instance (see below)
-- Python 3.10 or higher
-
-**Configure environment variables:**
-
-```bash
-export PAPERLESS_DOCLING_SERVE_URL="http://localhost:5000"
-export PAPERLESS_DOCLING_SERVE_TIMEOUT="300.0"
-export PAPERLESS_DOCLING_SERVE_MAX_RETRIES="3"
-export PAPERLESS_DOCLING_PDF_CONVERSION_MODE="easyocr"
-```
-
-The plugin will be automatically discovered by Paperless-ngx through its entry point system.
-
-### Option 2: Docker Installation
-
-#### Using Dockerfile
-
-Add this to your Paperless-ngx Dockerfile:
+#### Via Dockerfile (extend the official image)
 
 ```dockerfile
-# Use the official Paperless-ngx image as base
 FROM ghcr.io/paperless-ngx/paperless-ngx:latest
 
-# Switch to root to install packages
 USER root
 
-# Install minimal system dependencies
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-    libgl1 \
-    libglib2.0-0 && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
+    apt-get install -y --no-install-recommends libgl1 libglib2.0-0 && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Install the plugin with docling-serve variant
 RUN pip install --no-cache-dir pgx-docling-parser-serve
 
-# Switch back to paperless user
 USER paperless
 ```
 
-#### Using Docker Compose
+Paperless-ngx discovers the plugin automatically via the `paperless_ngx.parsers` entry point — no extra registration is needed.
 
-This repository includes a complete Docker Compose setup with Paperless-ngx and Docling-Serve pre-configured:
+### 2. Start docling-serve
 
-```bash
-git clone https://github.com/T-Eberle/paperless-docling-parser.git
-cd paperless-docling-parser
-docker-compose up -d
-```
+The plugin requires a running docling-serve instance to perform the actual conversion.
 
-Access Paperless-ngx at `http://localhost:8000` (default credentials: admin/admin - change after first login!)
-
-## Setting up Docling-Serve
-
-The `docling_serve` version requires a separate Docling-Serve instance for document processing.
-
-### Run Docling-Serve with Docker
-
+**CPU only:**
 ```bash
 docker run -d -p 5000:5000 ds4sd/docling-serve:latest
 ```
 
-### Run Docling-Serve with GPU support
-
+**With GPU (strongly recommended for granite_docling mode):**
 ```bash
-docker run -d -p 5000:5000 \
-  --gpus all \
-  ds4sd/docling-serve:latest
+docker run -d -p 5000:5000 --gpus all ds4sd/docling-serve:latest
 ```
 
-### Verify Docling-Serve is running
-
+Verify it is up:
 ```bash
 curl http://localhost:5000/health
 ```
+
+### 3. Configure environment variables
+
+Set these on your Paperless-ngx container (e.g. in `docker-compose.yaml` or your systemd unit):
+
+```bash
+PAPERLESS_DOCLING_SERVE_URL=http://docling-serve:5000
+PAPERLESS_DOCLING_PDF_CONVERSION_MODE=easyocr
+```
+
+See the full reference below.
+
+---
 
 ## Configuration
 
-### Environment Variables
+### Environment variables
 
 | Variable | Description | Default |
-|----------|-------------|---------|
-| `PAPERLESS_DOCLING_SERVE_URL` | URL of the docling-serve API | `http://localhost:5000` |
-| `PAPERLESS_DOCLING_SERVE_TIMEOUT` | Timeout for API calls (seconds) | `300.0` |
-| `PAPERLESS_DOCLING_SERVE_MAX_RETRIES` | Maximum retry attempts | `3` |
-| `PAPERLESS_DOCLING_PDF_CONVERSION_MODE` | OCR backend to use | `easyocr` |
+|---|---|---|
+| `PAPERLESS_DOCLING_SERVE_URL` | Base URL of the docling-serve API | `http://docling-serve:5000` |
+| `PAPERLESS_DOCLING_SERVE_TIMEOUT` | HTTP request timeout in seconds | `300.0` |
+| `PAPERLESS_DOCLING_PDF_CONVERSION_MODE` | OCR/pipeline mode (see below) | `easyocr` |
+| `PAPERLESS_DOCLING_POLL_MAX_ATTEMPTS` | Maximum status-poll retries | `60` |
+| `PAPERLESS_DOCLING_POLL_INTERVAL` | Seconds between status polls | `5.0` |
+| `PAPERLESS_DOCLING_OCR_LANGUAGE` | Comma-separated OCR language codes | `eng` |
 
-### PDF Conversion Modes
+### Conversion modes
 
-- **easyocr** (default): Good balance of speed and accuracy, supports multiple languages
-- **tesseract**: Fast and reliable for standard documents, but lacks on accuracy
-- **granite_docling**: Best accuracy for complex layouts using Vision Language Models (requires far more resources)
+| Mode | Speed | Accuracy | Notes |
+|---|---|---|---|
+| `easyocr` *(default)* | Medium | Good | Solid multi-language support |
+| `tesseract` | Fast | Moderate | Best for clean, simple layouts |
+| `granite_docling` | Slow | Excellent | Vision-Language Model pipeline; requires significant GPU resources |
+
+**Example — German + English OCR with Tesseract:**
+```bash
+PAPERLESS_DOCLING_PDF_CONVERSION_MODE=tesseract
+PAPERLESS_DOCLING_OCR_LANGUAGE=deu,eng
+```
+
+---
+
+## How the conversion works
+
+Each document goes through a three-step async workflow inside docling-serve:
+
+1. **Submit** — `POST /v1/convert/file/async` uploads the PDF and returns a `task_id`.
+2. **Poll** — `GET /v1/status/poll/{task_id}` is called repeatedly (up to `PAPERLESS_DOCLING_POLL_MAX_ATTEMPTS` times, spaced `PAPERLESS_DOCLING_POLL_INTERVAL` seconds apart) until the task succeeds or fails.
+3. **Fetch** — `GET /v1/result/{task_id}` retrieves the `DoclingDocument` JSON, which is exported to Markdown and stored in Paperless-ngx.
+
+---
 
 ## Troubleshooting
 
-### Check if the plugin is installed
+### Verify the plugin is loaded
 
 ```bash
-pip list | grep pgx-docling-parser
+pip show pgx-docling-parser-serve
 ```
 
-### Test Docling-Serve connection
+### Check docling-serve health
 
 ```bash
-curl http://localhost:5000/health
+curl http://<PAPERLESS_DOCLING_SERVE_URL>/health
 ```
 
-### Common Issues
+### Common issues
 
-**Connection refused to docling-serve:**
-- Ensure docling-serve is running
-- Verify the URL in `PAPERLESS_DOCLING_SERVE_URL` is correct
-- Check network connectivity
+**Connection refused**
+- Confirm docling-serve is running and `PAPERLESS_DOCLING_SERVE_URL` is correct.
+- If using Docker Compose, make sure both services are on the same network.
 
-**Timeout errors:**
-- Increase `PAPERLESS_DOCLING_SERVE_TIMEOUT` for large documents
-- Consider enabling GPU support for faster processing
+**Timeout / polling exhausted**
+- Large or complex PDFs take longer. Increase `PAPERLESS_DOCLING_SERVE_TIMEOUT` and `PAPERLESS_DOCLING_POLL_MAX_ATTEMPTS`.
+- GPU acceleration significantly reduces processing time.
+
+**Poor OCR quality**
+- Switch to `granite_docling` mode for complex layouts, scanned documents, or mixed-script content (requires GPU).
+- Make sure `PAPERLESS_DOCLING_OCR_LANGUAGE` includes all languages present in your documents.
+
+---
+
+## Requirements
+
+- Python 3.10 – 3.13
+- A running [docling-serve](https://github.com/docling-project/docling-serve) instance
+- Paperless-ngx (any recent version)
+
+---
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, branching strategy, coding standards, and the release process.
+
+---
 
 ## Links
 
 - [Paperless-ngx](https://github.com/paperless-ngx/paperless-ngx)
 - [Docling](https://github.com/DS4SD/docling)
-- [Issues](https://github.com/T-Eberle/paperless-docling-parser/issues)
+- [docling-serve](https://github.com/docling-project/docling-serve)
+- [Bug reports & feature requests](https://github.com/T-Eberle/paperless-docling-parser/issues)
+
+---
 
 ## License
 
-MIT License - see LICENSE file for details
+[MIT](LICENSE)
