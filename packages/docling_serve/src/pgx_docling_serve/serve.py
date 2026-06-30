@@ -3,8 +3,13 @@ import asyncio
 import logging
 from pathlib import Path
 from typing import Dict, Any
+from docling.datamodel.base_models import OutputFormat
+from docling.datamodel.document import ConversionResult
+from docling.datamodel.pipeline_options import ProcessingPipeline
+from docling.datamodel.service.options import ConvertDocumentsOptions
 import httpx
 from docling_core.types.doc.document import DoclingDocument
+from docling.service_client import DoclingServiceClient
 
 from pgx_docling import BaseDoclingConverter, get_pdf_conversion_mode
 
@@ -186,25 +191,17 @@ class DoclingRemoteConverter(BaseDoclingConverter):
     
     def convert_easyocr(self, document_path: Path) -> DoclingDocument:
         """Convert using EasyOCR preset."""
-        return self._convert(document_path, {
-            "ocr_preset": "easyocr",
-            "ocr_lang": self.ocr_language()
-        })
+        return self._convert(document_path, ConvertDocumentsOptions(ocr_preset="easyocr",ocr_lang=self.ocr_language()))
     
     def convert_tesseract(self, document_path: Path) -> DoclingDocument:
         """Convert using Tesseract OCR preset."""
-        return self._convert(document_path, {
-            "ocr_preset": "tesseract",
-            "ocr_lang": self.ocr_language()
-        })
+        return self._convert(document_path, ConvertDocumentsOptions(ocr_preset="tesseract",ocr_lang=self.ocr_language()))
     
     def convert_granite_docling(self, document_path: Path) -> DoclingDocument:
         """Convert using Granite Docling VLM pipeline."""
-        return self._convert(document_path, {
-            "pipeline": "vlm"
-        })
+        return self._convert(document_path,ConvertDocumentsOptions(pipeline=ProcessingPipeline.VLM))
     
-    def _convert(self, document_path: Path, options: Dict[str, Any]) -> DoclingDocument:
+    def _convert(self, document_path: Path, options: ConvertDocumentsOptions) -> DoclingDocument | None:
         """
         Synchronous wrapper for async conversion.
         
@@ -215,5 +212,15 @@ class DoclingRemoteConverter(BaseDoclingConverter):
         Returns:
             DoclingDocument: The converted document
         """
-        return asyncio.run(self.convert_async(document_path, options))
+        result: ConversionResult | None = None
+        options.to_formats=[OutputFormat.JSON]
+        with DoclingServiceClient(url=PAPERLESS_DOCLING_SERVE_URL) as client:
+            result = client.convert(
+                source=document_path,
+                options=options
+        )
+        if result:
+            return result.document
+        else:
+            raise ParseError("Docling Document could not be loaded.")
 

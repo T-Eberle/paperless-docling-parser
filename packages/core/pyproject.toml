@@ -29,8 +29,8 @@ classifiers = [
 # Core dependencies needed by both local and docling_serve
 dependencies = [
     "pymupdf>=1.23.0",
-    "docling-core>=2.0.0",
     "Pillow>=10.0.0",
+    "docling>=2.103.0",
 ]
 
 [project.urls]
